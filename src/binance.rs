@@ -19,12 +19,11 @@ pub type AsyncWriteChannel = SplitSink<WebSocketStream<MaybeTlsStream<TcpStream>
 pub type AsyncReadChannel = SplitStream<WebSocketStream<MaybeTlsStream<TcpStream>>>;
 
 const BINANCE_ADDR: &str = "wss://stream.binance.com:9443/ws";
-const BINANCE_ADDR_RAW: &str = "wss://stream.binance.com:9443";
 
 const BINANCE_SUBSCRIBE: &str = r#"{
   "method": "SUBSCRIBE",
   "params": [
-    "ethbtc@depth"
+    "ethbtc@depth10"
   ],
   "id": 1
 }"#;
@@ -33,29 +32,26 @@ const BINANCE_SUBSCRIBE: &str = r#"{
 struct OrderUpdate(Vec<String>);
 
 #[derive(Deserialize, Serialize)]
-struct DepthUpdate {
-    pub e: String,
-    pub E: u128,
-    pub s: String,
-    pub U: u128,
-    pub u: u128,
-    pub b: Vec<OrderUpdate>,
-    pub a: Vec<OrderUpdate>,
+struct OrderbookUpdate {
+    pub lastUpdateId: u64,
+    pub bids: Vec<OrderUpdate>,
+    pub asks: Vec<OrderUpdate>,
 }
+
+struct Sink;
+impl Sink {
+    pub fn handle_update(&mut self, asks: Vec<OrderUpdate>, bids: Vec<OrderUpdate>) -> () {
+        println!("Sinked!: {} {}", asks.len(), bids.len())
+    }
+}
+
 struct BinanceClient {
-    asks: Arc<RwLock<Orderbook>>,
-    bids: Arc<RwLock<Orderbook>>,
+    sink: Sink,
 }
 
 impl BinanceClient {
-    pub fn new(
-        shared_orderbook_asks: Arc<RwLock<Orderbook>>,
-        shared_orderbook_bids: Arc<RwLock<Orderbook>>,
-    ) -> Self {
-        Self {
-            asks: shared_orderbook_asks.clone(),
-            bids: shared_orderbook_bids.clone(),
-        }
+    pub fn new() -> Self {
+        Self { sink: Sink {} }
     }
     pub fn arc(self) -> Arc<RwLock<Self>> {
         Arc::new(RwLock::new(self))
@@ -104,46 +100,19 @@ impl BinanceClient {
         let data = message
             .into_text()
             .expect("Failed to convert Message to String");
-        let v = Value::from_str(&data).expect("Failed to convert serde");
-        let event = v.get("e").expect("Failed to get event name");
-        let event_name = event.to_string();
 
-        match event_name.as_str() {
-            "\"depthUpdate\"" => {
-                println!("Response: DepthUpdate");
-                let v = serde_json::from_value::<DepthUpdate>(v).unwrap();
-                let mut asks = self.asks.write().unwrap();
-                let mut bids = self.bids.write().unwrap();
-                let asks_update = v.a;
-                let bids_update = v.b;
-
-                for i in asks_update {
-                    let price_level = PriceLevel::from(i.0.get(0).unwrap());
-                    let price_value = i.0.get(1).unwrap().parse().unwrap();
-                    (*asks).update_level(price_level, price_value);
-                }
-                println!("Asks updated. Now {}", (*asks).get_amount());
-                for i in bids_update {
-                    let price_level = PriceLevel::from(i.0.get(0).unwrap());
-                    let price_value = i.0.get(1).unwrap().parse().unwrap();
-                    (*bids).update_level(price_level, price_value);
-                }
-                println!("Bids updated. Now {}", (*bids).get_amount());
-            }
-            "\"result\"" => {
-                println!("Response: result")
-            }
-            response => {
-                println!("Unexpected response: {}", response)
-            }
+        if let Ok(update) = serde_json::from_str::<OrderbookUpdate>(&data) {
+            let asks_update = update.asks;
+            let bids_update = update.bids;
+            self.sink.handle_update(asks_update, bids_update);
+        } else {
+            println!("Unexpected response: {}", data)
         }
     }
 }
 
 pub async fn do_binance() {
-    let asks = Orderbook::new().arc();
-    let bids = Orderbook::new().arc();
-    let client = BinanceClient::new(asks, bids).arc();
+    let client = BinanceClient::new().arc();
     let (mut write, mut read) = BinanceClient::init_connectors().await;
     BinanceClient::subscribe(&mut read, &mut write).await;
     BinanceClient::run(client, read).await;
