@@ -15,6 +15,9 @@ use tokio_tungstenite::{
 
 use core::str::FromStr;
 
+pub type AsyncWriteChannel = SplitSink<WebSocketStream<MaybeTlsStream<TcpStream>>, Message>;
+pub type AsyncReadChannel = SplitStream<WebSocketStream<MaybeTlsStream<TcpStream>>>;
+
 const BINANCE_ADDR: &str = "wss://stream.binance.com:9443/ws";
 const BINANCE_ADDR_RAW: &str = "wss://stream.binance.com:9443";
 
@@ -75,10 +78,6 @@ impl BinanceClient {
         let response = read.next().await;
         match response {
             Some(Ok(m)) => {
-                tokio::io::stdout()
-                    .write_all("Sub response received".as_bytes())
-                    .await
-                    .unwrap();
                 tokio::io::stdout().write_all(&m.into_data()).await.unwrap();
                 tokio::io::stdout()
                     .write_all("\n".as_bytes())
@@ -87,11 +86,7 @@ impl BinanceClient {
             }
             _ => {
                 tokio::io::stdout()
-                    .write_all("BBB".as_bytes())
-                    .await
-                    .unwrap();
-                tokio::io::stdout()
-                    .write_all("\n".as_bytes())
+                    .write_all("Failed to receive response to subscription\n".as_bytes())
                     .await
                     .unwrap();
             }
@@ -101,29 +96,6 @@ impl BinanceClient {
     pub async fn run(state: Arc<RwLock<BinanceClient>>, read: AsyncReadChannel) -> () {
         read.for_each(|message| async {
             state.write().unwrap().handle_message(message.unwrap());
-
-            /*
-            let data = message.unwrap().into_text().unwrap();
-            let update = serde_json::from_str::<DepthUpdate>(&data);
-            match update {
-                Ok(_) => tokio::io::stdout()
-                    .write_all("Ok\n".as_bytes())
-                    .await
-                    .unwrap(),
-                Err(e) => tokio::io::stdout()
-                    .write_all(format!("Not Ok: {:?}\n", e).as_bytes())
-                    .await
-                    .unwrap(),
-            };
-            tokio::io::stdout()
-                .write_all(data.as_bytes())
-                .await
-                .unwrap();
-            tokio::io::stdout()
-                .write_all("\n".as_bytes())
-                .await
-                .unwrap();
-             */
         })
         .await;
     }
@@ -168,9 +140,6 @@ impl BinanceClient {
     }
 }
 
-pub type AsyncWriteChannel = SplitSink<WebSocketStream<MaybeTlsStream<TcpStream>>, Message>;
-pub type AsyncReadChannel = SplitStream<WebSocketStream<MaybeTlsStream<TcpStream>>>;
-
 pub async fn do_binance() {
     let asks = Orderbook::new().arc();
     let bids = Orderbook::new().arc();
@@ -178,36 +147,4 @@ pub async fn do_binance() {
     let (mut write, mut read) = BinanceClient::init_connectors().await;
     BinanceClient::subscribe(&mut read, &mut write).await;
     BinanceClient::run(client, read).await;
-    /*
-    let connect_addr = BINANCE_ADDR;
-    let url = url::Url::parse(&connect_addr).unwrap();
-
-    let (ws_stream, _) = connect_async(url).await.expect("Failed to connect");
-    println!("Connection successful");
-
-    let (mut write  , read) = ws_stream.split();
-
-    let msg: Message = Message::text(BINANCE_SUBSCRIBE);
-    write.send(msg).await.unwrap();
-    println!("Subscribe sent");
-
-    let ws_to_stdout = {
-        read.for_each(|message| async {
-            let data = message.unwrap().into_data();
-            let update = serde_json::from_slice::<DepthUpdate>(&data);
-            match update {
-                Ok(_) =>
-                    tokio::io::stdout().write_all("Ok\n".as_bytes()).await.unwrap(),
-                Err(e) => {
-                    tokio::io::stdout().write_all(format!("Not Ok: {:?}\n", e).as_bytes()).await.unwrap()
-                }
-            };
-            tokio::io::stdout().write_all(&data).await.unwrap();
-            tokio::io::stdout().write_all("\n".as_bytes()).await.unwrap();
-        })
-    };
-
-    ws_to_stdout.await;
-
-     */
 }
