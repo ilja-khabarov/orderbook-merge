@@ -1,6 +1,7 @@
 mod client;
 mod binance;
 mod bitstamp;
+mod data;
 
 #[tokio::main]
 async fn main() {
