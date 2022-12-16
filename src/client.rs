@@ -1,72 +1,34 @@
-use tokio::io::{AsyncReadExt, AsyncWriteExt};
-use tokio_tungstenite::{connect_async, tungstenite::protocol::Message};
-use futures_util::{future, pin_mut, SinkExt, StreamExt};
-use serde::{Deserialize, Serialize};
+pub mod orderbook {
+    tonic::include_proto!("orderbook");
+}
+use orderbook::orderbook_aggregator_client::OrderbookAggregatorClient;
+use orderbook::orderbook_aggregator_server::{OrderbookAggregator, OrderbookAggregatorServer};
+use orderbook::{Empty, Level, Summary};
 
+use tonic::transport::Channel;
+use tonic::Request;
 
+use std::error::Error;
+async fn stream_connect(
+    client: &mut OrderbookAggregatorClient<Channel>,
+) -> Result<(), Box<dyn Error>> {
+    let mut stream = client
+        .book_summary(Request::new(Empty {}))
+        .await?
+        .into_inner();
 
-#[derive(Deserialize, Serialize)]
-struct OrderUpdate(Vec<String>);
-
-const BITSTAMP_ADDR: &str = "wss://ws.bitstamp.net";
-
-const BITSTAMP_SUBSCRIBE: &str = r#"{
-    "event": "bts:subscribe",
-    "data": {
-        "channel": "order_book_ethbtc"
+    while let Some(data) = stream.message().await? {
+        println!("NOTE = {:?}", data);
     }
-}
-"#;
-
-
-#[derive(Deserialize, Serialize)]
-struct BitstampData {
-    timestamp: String,
-    microtimestamp: String,
-    bids: Vec<OrderUpdate>,
-    asks: Vec<OrderUpdate>,
+    Ok(())
 }
 
-#[derive(Deserialize, Serialize)]
-struct BitstampResponse {
-    data: BitstampData,
-    channel: String,
-    event: String,
-}
+#[tokio::main]
+async fn main() -> Result<(), Box<dyn Error>> {
+    let mut client = OrderbookAggregatorClient::connect("http://127.0.0.1:8080").await?;
 
-pub async fn do_bitstamp() {
-    let connect_addr = BITSTAMP_ADDR;
-    let url = url::Url::parse(&connect_addr).unwrap();
+    stream_connect(&mut client).await?;
 
-    let (ws_stream, _) = connect_async(url).await.expect("Failed to connect");
-    println!("Connection successful");
-
-    let (mut write  , read) = ws_stream.split();
-
-    let msg: Message = Message::text(BITSTAMP_SUBSCRIBE);
-    write.send(msg).await.unwrap();
-    println!("Subscribe sent");
-
-    let ws_to_stdout = {
-        read.for_each(|message| async {
-            let data = message.unwrap().into_data();
-            let update = serde_json::from_slice::<BitstampResponse>(&data);
-            match update {
-                Ok(u) => {
-                    tokio::io::stdout().write_all("Ok\n".as_bytes()).await.unwrap();
-                    if u.data.bids.len() != 100 || u.data.asks.len() != 100 {
-                        tokio::io::stdout().write_all("NOT 100\n".as_bytes()).await.unwrap();
-                    }
-                }
-                Err(e) => {
-                    tokio::io::stdout().write_all(format!("Not Ok: {:?}\n", e).as_bytes()).await.unwrap()
-                }
-            };
-            tokio::io::stdout().write_all(&data).await.unwrap();
-            tokio::io::stdout().write_all("\n".as_bytes()).await.unwrap();
-        })
-    };
-
-    ws_to_stdout.await;
-
+    println!("Hello, World?!");
+    Ok(())
 }
