@@ -1,4 +1,3 @@
-use crate::data::{Orderbook, PriceLevel};
 use futures_util::{
     future, pin_mut,
     stream::{SplitSink, SplitStream},
@@ -122,8 +121,6 @@ impl BitstampClient {
 }
 
 pub async fn do_bitstamp_v2() {
-    let asks = Orderbook::new().arc();
-    let bids = Orderbook::new().arc();
     let client = BitstampClient::new().arc();
     let (mut write, mut read) = BitstampClient::init_connectors().await;
     BitstampClient::subscribe(&mut read, &mut write).await;

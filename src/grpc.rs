@@ -13,6 +13,7 @@ use orderbook::{Empty, Level, Summary};
 #[derive(Debug, Default)]
 pub struct OrderbookService {}
 
+/// Mock event producer
 async fn generator() -> Summary {
     tokio::time::sleep(Duration::from_secs(1)).await;
     Summary {

@@ -3,7 +3,7 @@ use futures_util::TryFutureExt;
 mod binance;
 mod bitstamp;
 mod client;
-mod data;
+mod exchange_connection;
 mod grpc;
 
 #[tokio::main]
