@@ -1,4 +1,3 @@
-use crate::data::{Orderbook, PriceLevel};
 use futures_util::{
     future, pin_mut,
     stream::{SplitSink, SplitStream},
@@ -37,8 +36,8 @@ struct OrderbookUpdate {
     pub bids: Vec<OrderUpdate>,
     pub asks: Vec<OrderUpdate>,
 }
-
-struct Sink;
+/// Should be implemented as write channel
+struct Sink {}
 impl Sink {
     pub fn handle_update(&mut self, asks: Vec<OrderUpdate>, bids: Vec<OrderUpdate>) -> () {
         println!("Sinked!: {} {}", asks.len(), bids.len())
