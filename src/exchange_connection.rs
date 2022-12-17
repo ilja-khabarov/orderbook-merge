@@ -5,14 +5,14 @@ pub mod orderbook {
 }
 use orderbook::{Empty, Level, Summary};
 
-type TokioWriteChannel = tokio::sync::mpsc::Sender<OrderbookUpdate>;
-type TokioReceiveChannel = tokio::sync::mpsc::Receiver<OrderbookUpdate>;
+pub type TokioWriteChannel = tokio::sync::mpsc::Sender<OrderbookUpdate>;
+pub type TokioReceiveChannel = tokio::sync::mpsc::Receiver<OrderbookUpdate>;
 
 #[derive(Deserialize, Serialize, Clone)]
-struct OrderUpdate(Vec<String>);
+pub struct OrderUpdate(Vec<String>);
 
 #[derive(Deserialize, Serialize)]
-struct OrderbookUpdate {
+pub struct OrderbookUpdate {
     pub lastUpdateId: u64,
     pub bids: Vec<OrderUpdate>,
     pub asks: Vec<OrderUpdate>,
@@ -133,5 +133,68 @@ impl Sink {
         bids: Vec<OrderUpdate>,
     ) -> () {
         println!("Sinked!: {} {}", asks.len(), bids.len())
+    }
+}
+
+use futures_util::stream::{SplitSink, SplitStream};
+use std::sync::{Arc, RwLock};
+use tokio::net::TcpStream;
+use tokio_tungstenite::{tungstenite::protocol::Message, MaybeTlsStream, WebSocketStream};
+
+pub type AsyncWriteChannel = SplitSink<WebSocketStream<MaybeTlsStream<TcpStream>>, Message>;
+pub type AsyncReadChannel = SplitStream<WebSocketStream<MaybeTlsStream<TcpStream>>>;
+
+use futures_util::{SinkExt, StreamExt};
+use tokio::io::AsyncWriteExt;
+
+pub struct ExchangeClient {
+    sink: TokioWriteChannel,
+}
+impl ExchangeClient {
+    async fn init_connectors(address: &str) -> (AsyncWriteChannel, AsyncReadChannel) {
+        let url = url::Url::parse(&address).unwrap();
+
+        let (ws_stream, _) = tokio_tungstenite::connect_async(url)
+            .await
+            .expect("Failed to connect");
+        println!("Connection successful");
+
+        ws_stream.split()
+    }
+    async fn subscribe(
+        read: &mut AsyncReadChannel,
+        write: &mut AsyncWriteChannel,
+        message_text: &str,
+    ) -> () {
+        let msg: Message = Message::text(message_text);
+        write.send(msg).await.unwrap();
+        println!("Subscribe sent");
+        let response = read.next().await;
+        match response {
+            Some(Ok(m)) => {
+                tokio::io::stdout().write_all(&m.into_data()).await.unwrap();
+                tokio::io::stdout()
+                    .write_all("\n".as_bytes())
+                    .await
+                    .unwrap();
+            }
+            _ => {
+                tokio::io::stdout()
+                    .write_all("Failed to receive response to subscription\n".as_bytes())
+                    .await
+                    .unwrap();
+            }
+        }
+    }
+    async fn run<F>(&mut self, read: AsyncReadChannel, handler: F) -> ()
+    where
+        F: Fn(Message) -> OrderbookUpdate,
+    {
+        read.for_each(|message| async {
+            let update_converted = handler(message.unwrap());
+            self.sink.send(update_converted).await;
+        })
+        .await;
+        ()
     }
 }
