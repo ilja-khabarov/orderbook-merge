@@ -59,6 +59,36 @@ fn merge_orders(
     merged
 }
 
+#[test]
+fn test_merge_orders() {
+    let mut orders_a = vec![];
+    let mut orders_b = vec![];
+    for i in 0..10 {
+        let mut order_a: OrderUpdate = OrderUpdate(vec![]);
+        order_a.0.push((0.01f64 * i as f64).to_string());
+        order_a.0.push((1f64 * i as f64).to_string());
+        orders_a.push(order_a);
+
+        let mut order_b: OrderUpdate = OrderUpdate(vec![]);
+        order_b.0.push((0.012f64 * i as f64).to_string());
+        order_b.0.push((1.2f64 * i as f64).to_string());
+        orders_b.push(order_b);
+    }
+
+    let merged_orders = merge_orders(true, orders_a.clone(), orders_b.clone());
+
+    for i in merged_orders {
+        println!("{:?}", i.0)
+    }
+
+    orders_a.reverse();
+    orders_b.reverse();
+    let merged_orders = merge_orders(false, orders_a, orders_b);
+    for i in merged_orders {
+        println!("{:?}", i.0)
+    }
+}
+
 impl Level {
     fn from_order(exchange: &str, update: OrderUpdate) -> Self {
         let price = update.0.get(0).unwrap().parse().unwrap();
@@ -96,7 +126,12 @@ struct Sink {
     sink: TokioWriteChannel,
 }
 impl Sink {
-    pub fn handle_update(&mut self, asks: Vec<OrderUpdate>, bids: Vec<OrderUpdate>) -> () {
+    pub fn handle_update(
+        &mut self,
+        exchange: &str,
+        asks: Vec<OrderUpdate>,
+        bids: Vec<OrderUpdate>,
+    ) -> () {
         println!("Sinked!: {} {}", asks.len(), bids.len())
     }
 }
