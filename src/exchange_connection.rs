@@ -151,7 +151,10 @@ pub struct ExchangeClient {
     sink: TokioWriteChannel,
 }
 impl ExchangeClient {
-    async fn init_connectors(address: &str) -> (AsyncWriteChannel, AsyncReadChannel) {
+    pub fn init(sink: TokioWriteChannel) -> Self {
+        Self { sink }
+    }
+    pub async fn init_connectors(address: &str) -> (AsyncWriteChannel, AsyncReadChannel) {
         let url = url::Url::parse(&address).unwrap();
 
         let (ws_stream, _) = tokio_tungstenite::connect_async(url)
@@ -186,7 +189,7 @@ impl ExchangeClient {
             }
         }
     }
-    async fn run<F>(&mut self, read: AsyncReadChannel, handler: F) -> ()
+    pub(crate) async fn run<F>(&mut self, read: AsyncReadChannel, handler: F) -> ()
     where
         F: Fn(Message) -> OrderbookUpdate,
     {

@@ -12,6 +12,8 @@ use tokio_tungstenite::{
     connect_async, tungstenite::protocol::Message, MaybeTlsStream, WebSocketStream,
 };
 
+use crate::exchange_connection::ExchangeClient;
+use crate::exchange_connection::{OrderUpdate, OrderbookUpdate};
 use core::str::FromStr;
 
 pub type AsyncWriteChannel = SplitSink<WebSocketStream<MaybeTlsStream<TcpStream>>, Message>;
@@ -27,15 +29,6 @@ const BINANCE_SUBSCRIBE: &str = r#"{
   "id": 1
 }"#;
 
-#[derive(Deserialize, Serialize)]
-struct OrderUpdate(Vec<String>);
-
-#[derive(Deserialize, Serialize)]
-struct OrderbookUpdate {
-    pub lastUpdateId: u64,
-    pub bids: Vec<OrderUpdate>,
-    pub asks: Vec<OrderUpdate>,
-}
 /// Should be implemented as write channel
 struct Sink {}
 impl Sink {
@@ -115,4 +108,34 @@ pub async fn do_binance() {
     let (mut write, mut read) = BinanceClient::init_connectors().await;
     BinanceClient::subscribe(&mut read, &mut write).await;
     BinanceClient::run(client, read).await;
+}
+
+use crate::exchange_connection::TokioWriteChannel;
+
+struct BinanceData;
+impl BinanceData {
+    pub fn get_address() -> &'static str {
+        BINANCE_ADDR
+    }
+    pub fn get_subscription_message() -> &'static str {
+        BINANCE_SUBSCRIBE
+    }
+}
+fn binance_handler(message: Message) -> OrderbookUpdate {
+    let data = message
+        .into_text()
+        .expect("Failed to convert Message to String");
+
+    if let Ok(update) = serde_json::from_str::<OrderbookUpdate>(&data) {
+        return update;
+    } else {
+        panic!("Unexpected response: {}", data)
+    }
+}
+pub async fn do_binance_v2() {
+    let (write, read) = tokio::sync::mpsc::channel::<OrderbookUpdate>(4096);
+    let mut client = ExchangeClient::init(write);
+    let (mut ws_write, mut ws_read) =
+        ExchangeClient::init_connectors(BinanceData::get_address()).await;
+    client.run(ws_read, binance_handler).await;
 }
