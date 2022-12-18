@@ -1,4 +1,5 @@
 use serde::{Deserialize, Serialize};
+use tokio::sync::mpsc::Sender;
 
 pub mod orderbook {
     tonic::include_proto!("orderbook");
@@ -15,6 +16,23 @@ pub struct OrderUpdate(Vec<String>);
 pub struct OrderbookUpdate {
     pub bids: Vec<OrderUpdate>,
     pub asks: Vec<OrderUpdate>,
+}
+
+pub(crate) trait ExchangeClientConfig {
+    fn get_name() -> &'static str;
+    fn get_address() -> &'static str;
+    fn get_subscription_message() -> &'static str;
+    fn message_handler(message: Message) -> OrderbookUpdate;
+}
+
+pub(crate) async fn do_any<T>(local_write_channel: Sender<OrderbookUpdate>)
+where
+    T: ExchangeClientConfig,
+{
+    let mut client = ExchangeClient::init(local_write_channel);
+    let (mut ws_write, mut ws_read) = ExchangeClient::init_connectors(T::get_address()).await;
+    ExchangeClient::subscribe(&mut ws_read, &mut ws_write, T::get_subscription_message()).await;
+    client.run(ws_read, T::message_handler).await;
 }
 /*
 message Empty {}

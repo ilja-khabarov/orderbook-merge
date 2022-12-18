@@ -4,30 +4,28 @@ mod client;
 mod exchange_connection;
 mod grpc;
 
-use crate::binance::do_binance;
-use crate::bitstamp::do_bitstamp_v3;
 use exchange_connection::{ExchangeClient, OrderbookUpdate};
+
+use crate::binance::BinanceClientConfig;
+use crate::bitstamp::BitstampClientConfig;
+use crate::exchange_connection::ExchangeClientConfig;
 
 struct Server;
 impl Server {
-    pub fn run_binance() -> tokio::sync::mpsc::Receiver<OrderbookUpdate> {
-        let (binance_write, binance_read) = tokio::sync::mpsc::channel::<OrderbookUpdate>(4096);
+    pub fn run_exchange_client<T>() -> tokio::sync::mpsc::Receiver<OrderbookUpdate>
+    where
+        T: ExchangeClientConfig,
+    {
+        let (write, read) = tokio::sync::mpsc::channel::<OrderbookUpdate>(4096);
         tokio::spawn(async move {
-            do_binance(binance_write).await;
+            exchange_connection::do_any::<T>(write).await;
         });
-        return binance_read;
-    }
-    pub fn run_bitstamp() -> tokio::sync::mpsc::Receiver<OrderbookUpdate> {
-        let (bitstamp_write, bitstamp_read) = tokio::sync::mpsc::channel::<OrderbookUpdate>(4096);
-        tokio::spawn(async move {
-            do_bitstamp_v3(bitstamp_write).await;
-        });
-        return bitstamp_read;
+        return read;
     }
 
     pub async fn run_server() {
-        let mut binance_receiver = Self::run_binance();
-        let mut bitstamp_receiver = Self::run_bitstamp();
+        let mut binance_receiver = Self::run_exchange_client::<BinanceClientConfig>();
+        let mut bitstamp_receiver = Self::run_exchange_client::<BitstampClientConfig>();
 
         loop {
             tokio::select! {

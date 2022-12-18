@@ -4,7 +4,9 @@ use tokio::net::TcpStream;
 use tokio::sync::mpsc::Sender;
 use tokio_tungstenite::{tungstenite::protocol::Message, MaybeTlsStream, WebSocketStream};
 
-use crate::exchange_connection::{ExchangeClient, OrderUpdate, OrderbookUpdate};
+use crate::exchange_connection::{
+    ExchangeClient, ExchangeClientConfig, OrderUpdate, OrderbookUpdate,
+};
 use core::str::FromStr;
 
 pub type AsyncWriteChannel = SplitSink<WebSocketStream<MaybeTlsStream<TcpStream>>, Message>;
@@ -26,39 +28,33 @@ pub struct BinanceResponse {
     pub asks: Vec<OrderUpdate>,
 }
 
-struct BinanceData;
-impl BinanceData {
-    pub fn get_address() -> &'static str {
+pub(crate) struct BinanceClientConfig;
+
+impl ExchangeClientConfig for BinanceClientConfig {
+    fn get_name() -> &'static str {
+        "binance"
+    }
+
+    fn get_address() -> &'static str {
         BINANCE_ADDR
     }
-    pub fn get_subscription_message() -> &'static str {
+    fn get_subscription_message() -> &'static str {
         BINANCE_SUBSCRIBE
     }
-}
-fn binance_handler(message: Message) -> OrderbookUpdate {
-    let data = message
-        .into_text()
-        .expect("Failed to convert Message to String");
 
-    if let Ok(update) = serde_json::from_str::<BinanceResponse>(&data) {
-        let converted_update = OrderbookUpdate {
-            bids: update.bids,
-            asks: update.asks,
-        };
-        return converted_update;
-    } else {
-        panic!("Unexpected response: {}", data)
+    fn message_handler(message: Message) -> OrderbookUpdate {
+        let data = message
+            .into_text()
+            .expect("Failed to convert Message to String");
+
+        if let Ok(update) = serde_json::from_str::<BinanceResponse>(&data) {
+            let converted_update = OrderbookUpdate {
+                bids: update.bids,
+                asks: update.asks,
+            };
+            return converted_update;
+        } else {
+            panic!("Unexpected response: {}", data)
+        }
     }
-}
-pub async fn do_binance(local_write_channel: Sender<OrderbookUpdate>) {
-    let mut client = ExchangeClient::init(local_write_channel);
-    let (mut ws_write, mut ws_read) =
-        ExchangeClient::init_connectors(BinanceData::get_address()).await;
-    ExchangeClient::subscribe(
-        &mut ws_read,
-        &mut ws_write,
-        BinanceData::get_subscription_message(),
-    )
-    .await;
-    client.run(ws_read, binance_handler).await;
 }
