@@ -3,6 +3,7 @@ use std::{error::Error, io::ErrorKind, net::ToSocketAddrs, pin::Pin, time::Durat
 use tokio::sync::mpsc;
 use tokio_stream::{wrappers::ReceiverStream, StreamExt};
 use tonic::{transport::Server, Request, Response, Status, Streaming};
+use tracing::info;
 
 pub mod orderbook {
     tonic::include_proto!("orderbook");
@@ -32,14 +33,14 @@ impl OrderbookAggregator for OrderbookService {
         &self,
         request: Request<Empty>,
     ) -> Result<Response<Self::BookSummaryStream>, Status> {
-        println!("ListFeatures = {:?}", request);
+        info!("ListFeatures = {:?}", request);
 
         let (tx, rx) = mpsc::channel(4);
 
         tokio::spawn(async move {
             loop {
                 let s: Summary = generator().await;
-                println!("Summary generated");
+                info!("Summary generated");
                 tx.send(Ok(s)).await.unwrap();
             }
         });

@@ -18,7 +18,7 @@ async fn stream_connect(
         .into_inner();
 
     while let Some(data) = stream.message().await? {
-        println!("NOTE = {:?}", data);
+        println!("{:?}", data);
     }
     Ok(())
 }
@@ -29,6 +29,5 @@ async fn main() -> Result<(), Box<dyn Error>> {
 
     stream_connect(&mut client).await?;
 
-    println!("Hello, World?!");
     Ok(())
 }

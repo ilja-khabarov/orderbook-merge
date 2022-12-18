@@ -3,6 +3,8 @@ mod bitstamp;
 mod client;
 mod exchange_connection;
 mod grpc;
+use tracing::info;
+use tracing_subscriber;
 
 use exchange_connection::OrderbookUpdate;
 
@@ -10,15 +12,21 @@ use crate::binance::BinanceClientConfig;
 use crate::bitstamp::BitstampClientConfig;
 use crate::exchange_connection::ExchangeClientConfig;
 
+const TOKIO_CHANNEL_BUFFER_SIZE: usize = 4096;
+
 struct Server;
 impl Server {
     pub fn run_exchange_client<T>() -> tokio::sync::mpsc::Receiver<OrderbookUpdate>
     where
         T: ExchangeClientConfig,
     {
-        let (write, read) = tokio::sync::mpsc::channel::<OrderbookUpdate>(4096);
+        let (write, read) =
+            tokio::sync::mpsc::channel::<OrderbookUpdate>(TOKIO_CHANNEL_BUFFER_SIZE);
         tokio::spawn(async move {
-            exchange_connection::do_any::<T>(write).await;
+            // I'm open to talk about this unwrap(). Or any other, actually.
+            exchange_connection::run_exchange_client::<T>(write)
+                .await
+                .unwrap();
         });
         return read;
     }
@@ -30,10 +38,10 @@ impl Server {
         loop {
             tokio::select! {
                 msg = binance_receiver.recv() => {
-                    println!("A: {:?}", msg)
+                    info!("A: {:?}", msg)
                 }
                 msg = bitstamp_receiver.recv() => {
-                    println!("B: {:?}", msg)
+                    info!("B: {:?}", msg)
                 }
             }
         }
@@ -42,5 +50,6 @@ impl Server {
 
 #[tokio::main]
 async fn main() {
+    tracing_subscriber::fmt::init();
     Server::run_server().await;
 }
