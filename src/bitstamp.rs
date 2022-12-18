@@ -1,26 +1,9 @@
-use core::str::FromStr;
-use futures_util::{
-    future, pin_mut,
-    stream::{SplitSink, SplitStream},
-    SinkExt, StreamExt,
-};
 use serde::{Deserialize, Serialize};
-use serde_json::Value;
-use tokio::{
-    io::{AsyncReadExt, AsyncWriteExt},
-    net::TcpStream,
-    sync::mpsc::Sender,
-};
-use tokio_tungstenite::{
-    connect_async, tungstenite::protocol::Message, MaybeTlsStream, WebSocketStream,
-};
+use tokio_tungstenite::tungstenite::protocol::Message;
 
-use crate::exchange_connection::{
-    ExchangeClient, ExchangeClientConfig, OrderUpdate, OrderbookUpdate,
-};
+use crate::exchange_connection::{ExchangeClientConfig, OrderUpdate, OrderbookUpdate};
 
 const BITSTAMP_ADDRESS: &str = "wss://ws.bitstamp.net";
-
 const BITSTAMP_SUBSCRIBE: &str = r#"{
     "event": "bts:subscribe",
     "data": {

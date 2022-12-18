@@ -51,8 +51,8 @@ double amount = 3;
 
 fn merge_orders(
     is_ask: bool,
-    mut orders_a: Vec<OrderUpdate>,
-    mut orders_b: Vec<OrderUpdate>,
+    orders_a: Vec<OrderUpdate>,
+    orders_b: Vec<OrderUpdate>,
 ) -> Vec<OrderUpdate> {
     let mut aidx = 0;
     let mut bidx = 0;

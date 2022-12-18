@@ -1,16 +1,7 @@
-use futures_util::stream::{SplitSink, SplitStream};
 use serde::{Deserialize, Serialize};
-use tokio::net::TcpStream;
-use tokio::sync::mpsc::Sender;
-use tokio_tungstenite::{tungstenite::protocol::Message, MaybeTlsStream, WebSocketStream};
+use tokio_tungstenite::tungstenite::protocol::Message;
 
-use crate::exchange_connection::{
-    ExchangeClient, ExchangeClientConfig, OrderUpdate, OrderbookUpdate,
-};
-use core::str::FromStr;
-
-pub type AsyncWriteChannel = SplitSink<WebSocketStream<MaybeTlsStream<TcpStream>>, Message>;
-pub type AsyncReadChannel = SplitStream<WebSocketStream<MaybeTlsStream<TcpStream>>>;
+use crate::exchange_connection::{ExchangeClientConfig, OrderUpdate, OrderbookUpdate};
 
 const BINANCE_ADDR: &str = "wss://stream.binance.com:9443/ws";
 

@@ -4,7 +4,7 @@ mod client;
 mod exchange_connection;
 mod grpc;
 
-use exchange_connection::{ExchangeClient, OrderbookUpdate};
+use exchange_connection::OrderbookUpdate;
 
 use crate::binance::BinanceClientConfig;
 use crate::bitstamp::BitstampClientConfig;
