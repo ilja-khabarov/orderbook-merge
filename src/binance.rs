@@ -127,6 +127,7 @@ fn binance_handler(message: Message) -> OrderbookUpdate {
         .expect("Failed to convert Message to String");
 
     if let Ok(update) = serde_json::from_str::<OrderbookUpdate>(&data) {
+        println!("Sinked!: {} {}", update.asks.len(), update.bids.len());
         return update;
     } else {
         panic!("Unexpected response: {}", data)
@@ -137,5 +138,11 @@ pub async fn do_binance_v2() {
     let mut client = ExchangeClient::init(write);
     let (mut ws_write, mut ws_read) =
         ExchangeClient::init_connectors(BinanceData::get_address()).await;
+    ExchangeClient::subscribe(
+        &mut ws_read,
+        &mut ws_write,
+        BinanceData::get_subscription_message(),
+    )
+    .await;
     client.run(ws_read, binance_handler).await;
 }
