@@ -150,6 +150,7 @@ use tokio::io::AsyncWriteExt;
 pub struct ExchangeClient {
     sink: TokioWriteChannel,
 }
+
 impl ExchangeClient {
     pub fn init(sink: TokioWriteChannel) -> Self {
         Self { sink }

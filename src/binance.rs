@@ -133,9 +133,9 @@ fn binance_handler(message: Message) -> OrderbookUpdate {
         panic!("Unexpected response: {}", data)
     }
 }
-pub async fn do_binance_v2() {
-    let (write, read) = tokio::sync::mpsc::channel::<OrderbookUpdate>(4096);
-    let mut client = ExchangeClient::init(write);
+use tokio::sync::mpsc::Sender;
+pub async fn do_binance_v2(local_write_channel: Sender<OrderbookUpdate>) {
+    let mut client = ExchangeClient::init(local_write_channel);
     let (mut ws_write, mut ws_read) =
         ExchangeClient::init_connectors(BinanceData::get_address()).await;
     ExchangeClient::subscribe(
