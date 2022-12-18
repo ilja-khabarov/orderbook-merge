@@ -57,10 +57,6 @@ impl Sink {
     }
 }
 
-pub struct BitstampClient {
-    sink: Sink,
-}
-
 pub async fn do_bitstamp_v3(local_write_channel: Sender<OrderbookUpdate>) {
     let mut client = ExchangeClient::init(local_write_channel);
     let (mut ws_write, mut ws_read) =

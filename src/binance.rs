@@ -1,17 +1,9 @@
-use futures_util::{
-    future, pin_mut,
-    stream::{SplitSink, SplitStream},
-    SinkExt, StreamExt,
-};
+use futures_util::stream::{SplitSink, SplitStream};
 use serde::{Deserialize, Serialize};
-use std::sync::{Arc, RwLock};
 use tokio::net::TcpStream;
 use tokio::sync::mpsc::Sender;
-use tokio_tungstenite::{
-    connect_async, tungstenite::protocol::Message, MaybeTlsStream, WebSocketStream,
-};
+use tokio_tungstenite::{tungstenite::protocol::Message, MaybeTlsStream, WebSocketStream};
 
-use crate::exchange_connection::TokioWriteChannel;
 use crate::exchange_connection::{ExchangeClient, OrderUpdate, OrderbookUpdate};
 use core::str::FromStr;
 
@@ -41,7 +33,6 @@ struct BinanceClient {
 }
 #[derive(Debug, Deserialize, Serialize)]
 pub struct BinanceResponse {
-    pub lastUpdateId: u64,
     pub bids: Vec<OrderUpdate>,
     pub asks: Vec<OrderUpdate>,
 }

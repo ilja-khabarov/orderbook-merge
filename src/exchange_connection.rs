@@ -120,21 +120,6 @@ impl Summary {
     }
 }
 
-/// A wrapper around Tokio channel with message building function
-struct Sink {
-    sink: TokioWriteChannel,
-}
-impl Sink {
-    pub fn handle_update(
-        &mut self,
-        exchange: &str,
-        asks: Vec<OrderUpdate>,
-        bids: Vec<OrderUpdate>,
-    ) -> () {
-        println!("Sinked!: {} {}", asks.len(), bids.len())
-    }
-}
-
 use futures_util::stream::{SplitSink, SplitStream};
 use std::sync::{Arc, RwLock};
 use tokio::net::TcpStream;

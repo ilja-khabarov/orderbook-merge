@@ -1,6 +1,3 @@
-use futures_util::TryFutureExt;
-use tokio::task::JoinHandle;
-
 mod binance;
 mod bitstamp;
 mod client;
@@ -35,10 +32,10 @@ impl Server {
         loop {
             tokio::select! {
                 msg = binance_receiver.recv() => {
-                    println!("AAA")
+                    println!("A: {:?}", msg)
                 }
                 msg = bitstamp_receiver.recv() => {
-                    println!("--- BBB")
+                    println!("B: {:?}", msg)
                 }
             }
         }
