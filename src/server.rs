@@ -7,16 +7,16 @@ mod client;
 mod exchange_connection;
 mod grpc;
 
-struct Server;
-use crate::binance::do_binance_v2;
+use crate::binance::do_binance;
 use crate::bitstamp::do_bitstamp_v3;
 use exchange_connection::{ExchangeClient, OrderbookUpdate};
 
+struct Server;
 impl Server {
     pub fn run_binance() -> tokio::sync::mpsc::Receiver<OrderbookUpdate> {
         let (binance_write, binance_read) = tokio::sync::mpsc::channel::<OrderbookUpdate>(4096);
         tokio::spawn(async move {
-            do_binance_v2(binance_write).await;
+            do_binance(binance_write).await;
         });
         return binance_read;
     }
@@ -48,10 +48,4 @@ impl Server {
 #[tokio::main]
 async fn main() {
     Server::run_server().await;
-    std::thread::sleep(std::time::Duration::from_secs(5));
-    //binance::do_binance_v2().await;
-    //bitstamp::do_bitstamp_v3().await;
-    //binance::do_binance().await;
-    //grpc::run_grpc().await.unwrap();
-    //bitstamp::do_bitstamp_v2().await;
 }

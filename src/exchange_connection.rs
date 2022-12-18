@@ -13,7 +13,6 @@ pub struct OrderUpdate(Vec<String>);
 
 #[derive(Debug, Deserialize, Serialize)]
 pub struct OrderbookUpdate {
-    pub lastUpdateId: u64,
     pub bids: Vec<OrderUpdate>,
     pub asks: Vec<OrderUpdate>,
 }
