@@ -13,6 +13,21 @@ const BITSTAMP_SUBSCRIBE: &str = r#"{
     }
     "#;
 
+#[derive(Deserialize, Serialize)]
+struct BitstampResponseData {
+    timestamp: String,
+    microtimestamp: String,
+    bids: Vec<OrderUpdate>,
+    asks: Vec<OrderUpdate>,
+}
+
+#[derive(Deserialize, Serialize)]
+struct BitstampResponse {
+    data: BitstampResponseData,
+    channel: String,
+    event: String,
+}
+
 pub(crate) struct BitstampClientConfig;
 
 impl ExchangeClientConfig for BitstampClientConfig {
@@ -35,19 +50,4 @@ impl ExchangeClientConfig for BitstampClientConfig {
             })
             .map_err(Into::into)
     }
-}
-
-#[derive(Deserialize, Serialize)]
-struct BitstampResponseData {
-    timestamp: String,
-    microtimestamp: String,
-    bids: Vec<OrderUpdate>,
-    asks: Vec<OrderUpdate>,
-}
-
-#[derive(Deserialize, Serialize)]
-struct BitstampResponse {
-    data: BitstampResponseData,
-    channel: String,
-    event: String,
 }
