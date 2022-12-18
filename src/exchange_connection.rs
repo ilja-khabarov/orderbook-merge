@@ -1,4 +1,5 @@
 use serde::{Deserialize, Serialize};
+use std::error::Error;
 use tokio::sync::mpsc::Sender;
 
 pub mod orderbook {
@@ -22,7 +23,7 @@ pub(crate) trait ExchangeClientConfig {
     fn get_name() -> &'static str;
     fn get_address() -> &'static str;
     fn get_subscription_message() -> &'static str;
-    fn message_handler(message: Message) -> OrderbookUpdate;
+    fn message_handler(message: Message) -> anyhow::Result<OrderbookUpdate>;
 }
 
 pub(crate) async fn do_any<T>(local_write_channel: Sender<OrderbookUpdate>)
@@ -194,10 +195,10 @@ impl ExchangeClient {
     }
     pub(crate) async fn run<F>(&mut self, read: WsReadChannel, handler: F) -> ()
     where
-        F: Fn(Message) -> OrderbookUpdate,
+        F: Fn(Message) -> anyhow::Result<OrderbookUpdate>,
     {
         read.for_each(|message| async {
-            let update_converted = handler(message.unwrap());
+            let update_converted = handler(message.unwrap()).unwrap();
             self.sink.send(update_converted).await.unwrap();
         })
         .await;

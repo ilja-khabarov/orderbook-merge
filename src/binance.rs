@@ -1,4 +1,5 @@
 use serde::{Deserialize, Serialize};
+use std::error::Error;
 use tokio_tungstenite::tungstenite::protocol::Message;
 
 use crate::exchange_connection::{ExchangeClientConfig, OrderUpdate, OrderbookUpdate};
@@ -33,19 +34,13 @@ impl ExchangeClientConfig for BinanceClientConfig {
         BINANCE_SUBSCRIBE
     }
 
-    fn message_handler(message: Message) -> OrderbookUpdate {
-        let data = message
-            .into_text()
-            .expect("Failed to convert Message to String");
-
-        if let Ok(update) = serde_json::from_str::<BinanceResponse>(&data) {
-            let converted_update = OrderbookUpdate {
-                bids: update.bids,
-                asks: update.asks,
-            };
-            return converted_update;
-        } else {
-            panic!("Unexpected response: {}", data)
-        }
+    fn message_handler(message: Message) -> anyhow::Result<OrderbookUpdate> {
+        let data = message.into_data();
+        serde_json::from_slice::<BinanceResponse>(&data)
+            .map(|response| OrderbookUpdate {
+                bids: response.bids,
+                asks: response.asks,
+            })
+            .map_err(Into::into)
     }
 }
