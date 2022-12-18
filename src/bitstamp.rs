@@ -141,9 +141,9 @@ pub async fn do_bitstamp_v2() {
     BitstampClient::run(client, read).await;
 }
 
-pub async fn do_bitstamp_v3() {
-    let (write, read) = tokio::sync::mpsc::channel::<OrderbookUpdate>(4096);
-    let mut client = ExchangeClient::init(write);
+use tokio::sync::mpsc::Sender;
+pub async fn do_bitstamp_v3(local_write_channel: Sender<OrderbookUpdate>) {
+    let mut client = ExchangeClient::init(local_write_channel);
     let (mut ws_write, mut ws_read) =
         ExchangeClient::init_connectors(BitstampData::get_address()).await;
     ExchangeClient::subscribe(
