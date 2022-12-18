@@ -1,3 +1,4 @@
+use core::str::FromStr;
 use futures_util::{
     future, pin_mut,
     stream::{SplitSink, SplitStream},
@@ -5,7 +6,6 @@ use futures_util::{
 };
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-use std::sync::{Arc, RwLock};
 use tokio::{
     io::{AsyncReadExt, AsyncWriteExt},
     net::TcpStream,
@@ -14,8 +14,6 @@ use tokio::{
 use tokio_tungstenite::{
     connect_async, tungstenite::protocol::Message, MaybeTlsStream, WebSocketStream,
 };
-
-use core::str::FromStr;
 
 use crate::exchange_connection::{ExchangeClient, OrderUpdate, OrderbookUpdate};
 
@@ -48,13 +46,6 @@ struct BitstampResponse {
     data: BitstampResponseData,
     channel: String,
     event: String,
-}
-
-struct Sink;
-impl Sink {
-    pub fn handle_update(&mut self, asks: Vec<OrderUpdate>, bids: Vec<OrderUpdate>) -> () {
-        println!("Sinked!: {} {}", asks.len(), bids.len())
-    }
 }
 
 pub async fn do_bitstamp_v3(local_write_channel: Sender<OrderbookUpdate>) {

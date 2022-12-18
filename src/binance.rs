@@ -20,17 +20,6 @@ const BINANCE_SUBSCRIBE: &str = r#"{
   "id": 1
 }"#;
 
-/// Should be implemented as write channel
-struct Sink {}
-impl Sink {
-    pub fn handle_update(&mut self, asks: Vec<OrderUpdate>, bids: Vec<OrderUpdate>) -> () {
-        println!("Sinked!: {} {}", asks.len(), bids.len())
-    }
-}
-
-struct BinanceClient {
-    sink: Sink,
-}
 #[derive(Debug, Deserialize, Serialize)]
 pub struct BinanceResponse {
     pub bids: Vec<OrderUpdate>,
