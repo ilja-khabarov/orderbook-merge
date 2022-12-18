@@ -9,21 +9,38 @@ mod grpc;
 
 struct Server;
 use crate::binance::do_binance_v2;
+use crate::bitstamp::do_bitstamp_v3;
 use exchange_connection::{ExchangeClient, OrderbookUpdate};
 
 impl Server {
     pub fn run_binance() -> tokio::sync::mpsc::Receiver<OrderbookUpdate> {
-        let (write, read) = tokio::sync::mpsc::channel::<OrderbookUpdate>(4096);
+        let (binance_write, binance_read) = tokio::sync::mpsc::channel::<OrderbookUpdate>(4096);
         tokio::spawn(async move {
-            do_binance_v2(write).await;
+            do_binance_v2(binance_write).await;
         });
-        return read;
+        return binance_read;
+    }
+    pub fn run_bitstamp() -> tokio::sync::mpsc::Receiver<OrderbookUpdate> {
+        let (bitstamp_write, bitstamp_read) = tokio::sync::mpsc::channel::<OrderbookUpdate>(4096);
+        tokio::spawn(async move {
+            do_bitstamp_v3(bitstamp_write).await;
+        });
+        return bitstamp_read;
     }
 
     pub async fn run_server() {
         let mut binance_receiver = Self::run_binance();
-        while let Some(v) = binance_receiver.recv().await {
-            println!("GOT = {:?}", v);
+        let mut bitstamp_receiver = Self::run_bitstamp();
+
+        loop {
+            tokio::select! {
+                msg = binance_receiver.recv() => {
+                    println!("AAA")
+                }
+                msg = bitstamp_receiver.recv() => {
+                    println!("--- BBB")
+                }
+            }
         }
     }
 }
