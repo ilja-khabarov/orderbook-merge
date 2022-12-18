@@ -14,9 +14,7 @@ use tokio_tungstenite::{
 
 use core::str::FromStr;
 
-#[derive(Deserialize, Serialize)]
-struct OrderUpdate(Vec<String>);
-
+use crate::exchange_connection::{ExchangeClient, OrderUpdate, OrderbookUpdate};
 const BITSTAMP_ADDR: &str = "wss://ws.bitstamp.net";
 
 const BITSTAMP_SUBSCRIBE: &str = r#"{
@@ -27,8 +25,24 @@ const BITSTAMP_SUBSCRIBE: &str = r#"{
 }
 "#;
 
+struct BitstampData;
+impl BitstampData {
+    fn get_address() -> &'static str {
+        "wss://ws.bitstamp.net"
+    }
+    fn get_subscription_message() -> &'static str {
+        r#"{
+        "event": "bts:subscribe",
+        "data": {
+            "channel": "order_book_ethbtc"
+        }
+        }
+        "#
+    }
+}
+
 #[derive(Deserialize, Serialize)]
-struct BitstampData {
+struct BitstampResponseData {
     timestamp: String,
     microtimestamp: String,
     bids: Vec<OrderUpdate>,
@@ -37,7 +51,7 @@ struct BitstampData {
 
 #[derive(Deserialize, Serialize)]
 struct BitstampResponse {
-    data: BitstampData,
+    data: BitstampResponseData,
     channel: String,
     event: String,
 }
@@ -125,6 +139,37 @@ pub async fn do_bitstamp_v2() {
     let (mut write, mut read) = BitstampClient::init_connectors().await;
     BitstampClient::subscribe(&mut read, &mut write).await;
     BitstampClient::run(client, read).await;
+}
+
+pub async fn do_bitstamp_v3() {
+    let (write, read) = tokio::sync::mpsc::channel::<OrderbookUpdate>(4096);
+    let mut client = ExchangeClient::init(write);
+    let (mut ws_write, mut ws_read) =
+        ExchangeClient::init_connectors(BitstampData::get_address()).await;
+    ExchangeClient::subscribe(
+        &mut ws_read,
+        &mut ws_write,
+        BitstampData::get_subscription_message(),
+    )
+    .await;
+    client.run(ws_read, bitstamp_handler).await;
+}
+
+fn bitstamp_handler(message: Message) -> OrderbookUpdate {
+    let data = message.into_data();
+    let update = serde_json::from_slice::<BitstampResponse>(&data);
+    match update {
+        Ok(u) => {
+            let orderbook_update = OrderbookUpdate {
+                lastUpdateId: 0,
+                bids: u.data.bids,
+                asks: u.data.asks,
+            };
+            return orderbook_update;
+        }
+        Err(e) => println!("Not Ok: {:?}\n", e),
+    };
+    unreachable!()
 }
 
 pub async fn do_bitstamp() {

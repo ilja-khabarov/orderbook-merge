@@ -8,7 +8,9 @@ mod grpc;
 
 #[tokio::main]
 async fn main() {
+    //binance::do_binance_v2().await;
+    bitstamp::do_bitstamp_v3().await;
     //binance::do_binance().await;
-    grpc::run_grpc().await.unwrap();
+    //grpc::run_grpc().await.unwrap();
     //bitstamp::do_bitstamp_v2().await;
 }

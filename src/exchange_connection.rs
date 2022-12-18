@@ -8,10 +8,10 @@ use orderbook::{Empty, Level, Summary};
 pub type TokioWriteChannel = tokio::sync::mpsc::Sender<OrderbookUpdate>;
 pub type TokioReceiveChannel = tokio::sync::mpsc::Receiver<OrderbookUpdate>;
 
-#[derive(Deserialize, Serialize, Clone)]
+#[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct OrderUpdate(Vec<String>);
 
-#[derive(Deserialize, Serialize)]
+#[derive(Debug, Deserialize, Serialize)]
 pub struct OrderbookUpdate {
     pub lastUpdateId: u64,
     pub bids: Vec<OrderUpdate>,
@@ -141,8 +141,8 @@ use std::sync::{Arc, RwLock};
 use tokio::net::TcpStream;
 use tokio_tungstenite::{tungstenite::protocol::Message, MaybeTlsStream, WebSocketStream};
 
-pub type AsyncWriteChannel = SplitSink<WebSocketStream<MaybeTlsStream<TcpStream>>, Message>;
-pub type AsyncReadChannel = SplitStream<WebSocketStream<MaybeTlsStream<TcpStream>>>;
+pub type WsWriteChannel = SplitSink<WebSocketStream<MaybeTlsStream<TcpStream>>, Message>;
+pub type WsReadChannel = SplitStream<WebSocketStream<MaybeTlsStream<TcpStream>>>;
 
 use futures_util::{SinkExt, StreamExt};
 use tokio::io::AsyncWriteExt;
@@ -154,7 +154,7 @@ impl ExchangeClient {
     pub fn init(sink: TokioWriteChannel) -> Self {
         Self { sink }
     }
-    pub async fn init_connectors(address: &str) -> (AsyncWriteChannel, AsyncReadChannel) {
+    pub async fn init_connectors(address: &str) -> (WsWriteChannel, WsReadChannel) {
         let url = url::Url::parse(&address).unwrap();
 
         let (ws_stream, _) = tokio_tungstenite::connect_async(url)
@@ -164,9 +164,9 @@ impl ExchangeClient {
 
         ws_stream.split()
     }
-    async fn subscribe(
-        read: &mut AsyncReadChannel,
-        write: &mut AsyncWriteChannel,
+    pub async fn subscribe(
+        read: &mut WsReadChannel,
+        write: &mut WsWriteChannel,
         message_text: &str,
     ) -> () {
         let msg: Message = Message::text(message_text);
@@ -189,15 +189,14 @@ impl ExchangeClient {
             }
         }
     }
-    pub(crate) async fn run<F>(&mut self, read: AsyncReadChannel, handler: F) -> ()
+    pub(crate) async fn run<F>(&mut self, read: WsReadChannel, handler: F) -> ()
     where
         F: Fn(Message) -> OrderbookUpdate,
     {
         read.for_each(|message| async {
             let update_converted = handler(message.unwrap());
-            self.sink.send(update_converted).await;
+            self.sink.send(update_converted).await.unwrap();
         })
         .await;
-        ()
     }
 }
