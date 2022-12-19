@@ -12,16 +12,13 @@ use tracing::{error, info};
 pub type WsWriteChannel = SplitSink<WebSocketStream<MaybeTlsStream<TcpStream>>, Message>;
 pub type WsReadChannel = SplitStream<WebSocketStream<MaybeTlsStream<TcpStream>>>;
 
-pub mod orderbook {
-    tonic::include_proto!("orderbook");
-}
-use orderbook::{Empty, Level, Summary};
+use crate::client::orderbook::{Empty, Level, Summary};
 
-pub type TokioWriteChannel = tokio::sync::mpsc::Sender<OrderbookUpdate>;
-pub type TokioReceiveChannel = tokio::sync::mpsc::Receiver<OrderbookUpdate>;
+pub type OrderbookUpdateSendChannel = tokio::sync::mpsc::Sender<OrderbookUpdate>;
+pub type OrderbookUpdateReceiveChannel = tokio::sync::mpsc::Receiver<OrderbookUpdate>;
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
-pub struct OrderUpdate(Vec<String>);
+pub struct OrderUpdate(pub Vec<String>);
 
 #[derive(Debug, Deserialize, Serialize)]
 pub struct OrderbookUpdate {
@@ -120,44 +117,12 @@ fn test_merge_orders() {
     }
 }
 
-impl Level {
-    fn from_order(exchange: &str, update: OrderUpdate) -> Self {
-        let price = update.0.get(0).unwrap().parse().unwrap();
-        let amount = update.0.get(1).unwrap().parse().unwrap();
-        Level {
-            exchange: exchange.to_string(),
-            price,
-            amount,
-        }
-    }
-}
-
-impl Summary {
-    fn from_orderbook(exchange: &str, orderbook_update: OrderbookUpdate) -> Self {
-        let bids = orderbook_update
-            .bids
-            .into_iter()
-            .map(|update| Level::from_order(exchange, update))
-            .collect();
-        let asks = orderbook_update
-            .asks
-            .into_iter()
-            .map(|update| Level::from_order(exchange, update))
-            .collect();
-        Summary {
-            spread: 1f64,
-            bids: bids,
-            asks: asks,
-        }
-    }
-}
-
 pub struct ExchangeClient {
-    sink: TokioWriteChannel,
+    sink: OrderbookUpdateSendChannel,
 }
 
 impl ExchangeClient {
-    pub fn init(sink: TokioWriteChannel) -> Self {
+    pub fn init(sink: OrderbookUpdateSendChannel) -> Self {
         Self { sink }
     }
     pub async fn init_connectors(address: &str) -> (WsWriteChannel, WsReadChannel) {
