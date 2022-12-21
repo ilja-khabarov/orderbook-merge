@@ -3,6 +3,8 @@ mod bitstamp;
 mod client;
 mod exchange_connection;
 mod grpc;
+mod merger;
+
 use tracing::info;
 use tracing_subscriber;
 
@@ -14,6 +16,10 @@ use crate::exchange_connection::ExchangeClientConfig;
 use crate::grpc::run_grpc;
 
 const TOKIO_CHANNEL_BUFFER_SIZE: usize = 4096;
+
+use merger::Merger;
+use std::sync::Arc;
+use tokio::sync::Mutex;
 
 struct Server;
 impl Server {
@@ -35,16 +41,25 @@ impl Server {
     pub async fn run_server(sender: Sender<Summary>) {
         let mut binance_receiver = Self::run_exchange_client::<BinanceClientConfig>();
         let mut bitstamp_receiver = Self::run_exchange_client::<BitstampClientConfig>();
+        let mut merger = Arc::new(Mutex::new(Merger::new()));
 
         loop {
             tokio::select! {
                 msg = binance_receiver.recv() => {
-                    //info!("A: {:?}", msg);
-                    let summary = Summary::from_orderbook(BinanceClientConfig::get_name(), msg.unwrap());
+                    //info!("Binance: {:?}", msg);
+                    let mut lock = merger.lock().await;
+                    lock.update_exchange("binance".to_string(), msg.unwrap());
+                    let summary = lock.provide_summary();
+                    info!("Binance: {:?}", summary);
                     sender.send(summary).await;
                 }
                 msg = bitstamp_receiver.recv() => {
-                    //info!("B: {:?}", msg);
+                    //info!("Stamp: {:?}", msg);
+                    let mut lock = merger.lock().await;
+                    lock.update_exchange("bitstamp".to_string(), msg.unwrap());
+                    let summary = lock.provide_summary();
+                    info!("Stamp: {:?}", summary);
+                    sender.send(summary).await;
                 }
             }
         }
