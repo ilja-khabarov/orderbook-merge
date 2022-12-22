@@ -43,14 +43,12 @@ impl Server {
                     let mut lock = merger.lock().await;
                     lock.update_exchange("binance".to_string(), msg.unwrap());
                     let summary = lock.provide_summary();
-                    info!("Binance: {:?}", summary);
                     sender.send(summary).await;
                 }
                 msg = bitstamp_receiver.recv() => {
                     let mut lock = merger.lock().await;
                     lock.update_exchange("bitstamp".to_string(), msg.unwrap());
                     let summary = lock.provide_summary();
-                    info!("Stamp: {:?}", summary);
                     sender.send(summary).await;
                 }
             }

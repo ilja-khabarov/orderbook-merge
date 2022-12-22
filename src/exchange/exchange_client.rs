@@ -92,7 +92,7 @@ impl ExchangeClient {
                         self.sink.send(update_converted).await.ok();
                     }
                 }
-                Err(_) => error!("Received faulty message from exchange. Skipping response"),
+                Err(_) => error!("Failed to parse a message from exchange. Skipping response"),
             }
         })
         .await;
