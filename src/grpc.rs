@@ -1,19 +1,18 @@
-use futures::Stream;
-use futures_util::stream::FuturesUnordered;
-use std::borrow::Borrow;
-use std::{error::Error, io::ErrorKind, net::ToSocketAddrs, pin::Pin, time::Duration};
-use tokio::sync::mpsc;
-use tokio::sync::mpsc::Receiver;
+use futures::lock::Mutex;
+use std::sync::Arc;
+use std::time::Duration;
+use tokio::sync::mpsc::{self, Receiver};
 use tokio_stream::wrappers::ReceiverStream;
-use tonic::{transport::Server, Request, Response, Status, Streaming};
+use tonic::{transport::Server, Request, Response, Status};
 use tracing::info;
 
-pub mod orderbook {
+use crate::exchange_connection::{OrderUpdate, OrderbookUpdate};
+
+pub mod proto {
     tonic::include_proto!("orderbook");
 }
-use crate::exchange_connection::OrderbookUpdateReceiveChannel;
-use orderbook::orderbook_aggregator_server::{OrderbookAggregator, OrderbookAggregatorServer};
-use orderbook::{Empty, Level, Summary};
+use proto::orderbook_aggregator_server::{OrderbookAggregator, OrderbookAggregatorServer};
+use proto::{Empty, Level, Summary};
 
 /// Mock event producer
 async fn generator() -> Summary {
@@ -24,14 +23,6 @@ async fn generator() -> Summary {
         asks: vec![],
     }
 }
-
-//use futures_util::StreamExt;
-use crate::exchange_connection::{OrderUpdate, OrderbookUpdate};
-use futures::lock::Mutex;
-use futures_util::AsyncWriteExt;
-use std::cell::RefCell;
-use std::io::Read;
-use std::sync::{Arc, RwLock};
 
 impl Level {
     pub(crate) fn from_order(exchange: &str, update: OrderUpdate) -> Self {
@@ -107,7 +98,7 @@ impl OrderbookAggregator for OrderbookService {
 }
 
 pub async fn run_grpc(receiver: Receiver<Summary>) -> anyhow::Result<()> {
-    let address = "127.0.0.1:8080".parse().unwrap();
+    let address = "0.0.0.0:8080".parse().unwrap();
     let voting_service = OrderbookService::init(receiver);
 
     Server::builder()

@@ -41,7 +41,7 @@ impl Server {
     pub async fn run_server(sender: Sender<Summary>) {
         let mut binance_receiver = Self::run_exchange_client::<BinanceClientConfig>();
         let mut bitstamp_receiver = Self::run_exchange_client::<BitstampClientConfig>();
-        let mut merger = Arc::new(Mutex::new(Merger::new()));
+        let merger = Arc::new(Mutex::new(Merger::new()));
 
         loop {
             tokio::select! {
@@ -66,8 +66,8 @@ impl Server {
     }
 }
 
-use grpc::orderbook::Summary;
-use tokio::sync::mpsc::{Receiver, Sender};
+use grpc::proto::Summary;
+use tokio::sync::mpsc::Sender;
 
 #[tokio::main]
 async fn main() {
@@ -75,7 +75,7 @@ async fn main() {
 
     let (sender, receiver) = tokio::sync::mpsc::channel(4096);
 
-    let mut server_handle = tokio::spawn(async move {
+    let server_handle = tokio::spawn(async move {
         Server::run_server(sender).await;
     });
     let grpc_handle = tokio::spawn(async move {

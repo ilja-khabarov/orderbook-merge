@@ -1,21 +1,16 @@
 use futures_util::stream::{SplitSink, SplitStream};
 use futures_util::{SinkExt, StreamExt};
 use serde::{Deserialize, Serialize};
-use std::error::Error;
-use std::sync::{Arc, RwLock};
-use tokio::io::AsyncWriteExt;
 use tokio::net::TcpStream;
-use tokio::sync::mpsc::Sender;
+use tokio::sync::mpsc::{Receiver, Sender};
 use tokio_tungstenite::{tungstenite::protocol::Message, MaybeTlsStream, WebSocketStream};
 use tracing::{error, info};
 
 pub type WsWriteChannel = SplitSink<WebSocketStream<MaybeTlsStream<TcpStream>>, Message>;
 pub type WsReadChannel = SplitStream<WebSocketStream<MaybeTlsStream<TcpStream>>>;
 
-use crate::client::orderbook::{Empty, Level, Summary};
-
-pub type OrderbookUpdateSendChannel = tokio::sync::mpsc::Sender<OrderbookUpdate>;
-pub type OrderbookUpdateReceiveChannel = tokio::sync::mpsc::Receiver<OrderbookUpdate>;
+pub type OrderbookUpdateSendChannel = Sender<OrderbookUpdate>;
+pub type OrderbookUpdateReceiveChannel = Receiver<OrderbookUpdate>;
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct OrderUpdate(pub Vec<String>);
@@ -98,7 +93,7 @@ impl ExchangeClient {
                         self.sink.send(update_converted).await.ok();
                     }
                 }
-                Err(e) => error!("Received faulty message from exchange. Skipping response"),
+                Err(_) => error!("Received faulty message from exchange. Skipping response"),
             }
         })
         .await;

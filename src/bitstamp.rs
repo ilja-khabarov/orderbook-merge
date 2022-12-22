@@ -1,5 +1,4 @@
 use serde::{Deserialize, Serialize};
-use std::error::Error;
 use tokio_tungstenite::tungstenite::protocol::Message;
 
 use crate::exchange_connection::{ExchangeClientConfig, OrderUpdate, OrderbookUpdate};

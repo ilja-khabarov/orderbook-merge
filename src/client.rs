@@ -2,8 +2,7 @@ pub mod orderbook {
     tonic::include_proto!("orderbook");
 }
 use orderbook::orderbook_aggregator_client::OrderbookAggregatorClient;
-use orderbook::orderbook_aggregator_server::{OrderbookAggregator, OrderbookAggregatorServer};
-use orderbook::{Empty, Level, Summary};
+use orderbook::Empty;
 
 use tonic::transport::Channel;
 use tonic::Request;

@@ -1,9 +1,6 @@
-use crate::exchange_connection::OrderUpdate;
-
-use crate::grpc::orderbook::{Level, Summary};
+use crate::grpc::proto::{Level, Summary};
 use crate::OrderbookUpdate;
 use std::collections::HashMap;
-use tracing::info;
 
 type ExchangeName = String;
 pub(crate) struct Merger {
@@ -38,11 +35,11 @@ impl Merger {
 
     pub(crate) fn provide_summary(&self) -> Summary {
         let mut merged_asks = vec![];
-        for (k, v) in self.asks.iter() {
+        for (_, v) in self.asks.iter() {
             merged_asks = Self::merge_orders(true, &merged_asks, &v);
         }
         let mut merged_bids = vec![];
-        for (k, v) in self.bids.iter() {
+        for (_, v) in self.bids.iter() {
             merged_bids = Self::merge_orders(false, &merged_bids, &v);
         }
         let spread = merged_bids.get(0).unwrap().price - merged_asks.get(0).unwrap().price;
@@ -62,7 +59,7 @@ impl Merger {
             return orders_b.clone();
         }
 
-        for i in 0..10 {
+        for _i in 0..10 {
             let a = orders_a.get(aidx).unwrap();
             let b = orders_b.get(bidx).unwrap();
 
