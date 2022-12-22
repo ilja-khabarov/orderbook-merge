@@ -39,8 +39,8 @@ impl Summary {
             .collect();
         Summary {
             spread: 1f64,
-            bids: bids,
-            asks: asks,
+            bids,
+            asks,
         }
     }
 }
@@ -74,9 +74,9 @@ impl OrderbookAggregator for OrderbookService {
         tokio::spawn(async move {
             let mut m = m.lock().await;
             loop {
-                let v: Summary = m.recv().await.unwrap();
-                info!("Summary generated");
-                tx.send(Ok(v)).await.unwrap();
+                if let Some(v) = m.recv().await {
+                    tx.send(Ok(v)).await.ok();
+                }
             }
         });
 

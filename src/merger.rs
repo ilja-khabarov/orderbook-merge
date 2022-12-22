@@ -56,7 +56,12 @@ impl Merger {
         let mut bidx = 0;
         let mut merged = vec![];
         if orders_a.len() == 0 {
-            return orders_b.clone();
+            for i in 0..10 {
+                if let Some(v) = orders_b.get(i) {
+                    merged.push(v.clone());
+                }
+            }
+            return merged;
         }
 
         for _i in 0..10 {

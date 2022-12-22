@@ -5,6 +5,7 @@ use tokio::sync::{
 };
 use tracing::info;
 
+use crate::exchange::exchange_client::OrderUpdate;
 use crate::exchange::{
     binance::BinanceClientConfig,
     bitstamp::BitstampClientConfig,
@@ -41,13 +42,13 @@ impl Server {
             tokio::select! {
                 msg = binance_receiver.recv() => {
                     let mut lock = merger.lock().await;
-                    lock.update_exchange("binance".to_string(), msg.unwrap());
+                    lock.update_exchange(BinanceClientConfig::get_name().to_string(), msg.unwrap());
                     let summary = lock.provide_summary();
                     sender.send(summary).await;
                 }
                 msg = bitstamp_receiver.recv() => {
                     let mut lock = merger.lock().await;
-                    lock.update_exchange("bitstamp".to_string(), msg.unwrap());
+                    lock.update_exchange(BitstampClientConfig::get_name().to_string(), msg.unwrap());
                     let summary = lock.provide_summary();
                     sender.send(summary).await;
                 }
