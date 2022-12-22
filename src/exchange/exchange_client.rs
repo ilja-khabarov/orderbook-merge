@@ -1,22 +1,21 @@
-use futures_util::stream::{SplitSink, SplitStream};
-use futures_util::{SinkExt, StreamExt};
+use futures_util::{
+    stream::{SplitSink, SplitStream},
+    SinkExt, StreamExt,
+};
 use serde::{Deserialize, Serialize};
 use tokio::net::TcpStream;
-use tokio::sync::mpsc::{Receiver, Sender};
+use tokio::sync::mpsc::Sender;
 use tokio_tungstenite::{tungstenite::protocol::Message, MaybeTlsStream, WebSocketStream};
 use tracing::{error, info};
 
-pub type WsWriteChannel = SplitSink<WebSocketStream<MaybeTlsStream<TcpStream>>, Message>;
-pub type WsReadChannel = SplitStream<WebSocketStream<MaybeTlsStream<TcpStream>>>;
-
-pub type OrderbookUpdateSendChannel = Sender<OrderbookUpdate>;
-pub type OrderbookUpdateReceiveChannel = Receiver<OrderbookUpdate>;
+type WsWriteChannel = SplitSink<WebSocketStream<MaybeTlsStream<TcpStream>>, Message>;
+type WsReadChannel = SplitStream<WebSocketStream<MaybeTlsStream<TcpStream>>>;
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
-pub struct OrderUpdate(pub Vec<String>);
+pub(crate) struct OrderUpdate(pub Vec<String>);
 
 #[derive(Debug, Deserialize, Serialize)]
-pub struct OrderbookUpdate {
+pub(crate) struct OrderbookUpdate {
     pub bids: Vec<OrderUpdate>,
     pub asks: Vec<OrderUpdate>,
 }
@@ -41,15 +40,15 @@ where
     Ok(())
 }
 
-pub struct ExchangeClient {
-    sink: OrderbookUpdateSendChannel,
+pub(crate) struct ExchangeClient {
+    sink: Sender<OrderbookUpdate>,
 }
 
 impl ExchangeClient {
-    pub fn init(sink: OrderbookUpdateSendChannel) -> Self {
+    pub(crate) fn init(sink: Sender<OrderbookUpdate>) -> Self {
         Self { sink }
     }
-    pub async fn init_connectors(address: &str) -> (WsWriteChannel, WsReadChannel) {
+    pub(crate) async fn init_connectors(address: &str) -> (WsWriteChannel, WsReadChannel) {
         let url = url::Url::parse(&address).expect(&format!("Failed to parse URL: {}", address));
 
         let (ws_stream, _) = tokio_tungstenite::connect_async(url)
@@ -59,7 +58,7 @@ impl ExchangeClient {
 
         ws_stream.split()
     }
-    pub async fn subscribe(
+    pub(crate) async fn subscribe(
         read: &mut WsReadChannel,
         write: &mut WsWriteChannel,
         message_text: &str,

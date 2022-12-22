@@ -14,9 +14,9 @@ const BINANCE_SUBSCRIBE: &str = r#"{
 }"#;
 
 #[derive(Debug, Deserialize, Serialize)]
-pub struct BinanceResponse {
-    pub bids: Vec<OrderUpdate>,
-    pub asks: Vec<OrderUpdate>,
+struct BinanceResponse {
+    bids: Vec<OrderUpdate>,
+    asks: Vec<OrderUpdate>,
 }
 
 pub(crate) struct BinanceClientConfig;

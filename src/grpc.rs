@@ -60,7 +60,6 @@ impl OrderbookService {
 
 #[tonic::async_trait]
 impl OrderbookAggregator for OrderbookService {
-    //type ListFeaturesStream = ReceiverStream<Result<Feature, Status>>;
     type BookSummaryStream = ReceiverStream<Result<Summary, Status>>;
 
     async fn book_summary(
@@ -76,7 +75,6 @@ impl OrderbookAggregator for OrderbookService {
             let mut m = m.lock().await;
             loop {
                 let v: Summary = m.recv().await.unwrap();
-                //let v = generator().await;
                 info!("Summary generated");
                 tx.send(Ok(v)).await.unwrap();
             }

@@ -1,5 +1,5 @@
+use crate::exchange::exchange_client::OrderbookUpdate;
 use crate::grpc::proto::{Level, Summary};
-use crate::OrderbookUpdate;
 use std::collections::HashMap;
 
 type ExchangeName = String;
@@ -80,18 +80,19 @@ impl Merger {
 
 #[test]
 fn test_merge_orders() {
+    use crate::exchange::exchange_client::OrderUpdate;
     let mut orders_a = vec![];
     let mut orders_b = vec![];
     for i in 0..10 {
         let mut order_a: OrderUpdate = OrderUpdate(vec![]);
         order_a.0.push((0.01f64 * i as f64).to_string());
         order_a.0.push((1f64 * i as f64).to_string());
-        orders_a.push(order_a);
+        orders_a.push(crate::grpc::proto::Level::from_order("any", order_a));
 
         let mut order_b: OrderUpdate = OrderUpdate(vec![]);
         order_b.0.push((0.012f64 * i as f64).to_string());
         order_b.0.push((1.2f64 * i as f64).to_string());
-        orders_b.push(order_b);
+        orders_b.push(crate::grpc::proto::Level::from_order("any", order_b));
     }
 
     let merged_orders = Merger::merge_orders(true, &orders_a, &orders_b);
