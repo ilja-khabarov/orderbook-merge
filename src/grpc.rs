@@ -1,28 +1,17 @@
 use futures::lock::Mutex;
 use std::sync::Arc;
-use std::time::Duration;
 use tokio::sync::mpsc::{self, Receiver};
 use tokio_stream::wrappers::ReceiverStream;
 use tonic::{transport::Server, Request, Response, Status};
 use tracing::info;
 
-use crate::exchange_connection::{OrderUpdate, OrderbookUpdate};
+use crate::exchange::exchange_client::{OrderUpdate, OrderbookUpdate};
 
 pub mod proto {
     tonic::include_proto!("orderbook");
 }
 use proto::orderbook_aggregator_server::{OrderbookAggregator, OrderbookAggregatorServer};
 use proto::{Empty, Level, Summary};
-
-/// Mock event producer
-async fn generator() -> Summary {
-    tokio::time::sleep(Duration::from_secs(1)).await;
-    Summary {
-        spread: 1f64,
-        bids: vec![],
-        asks: vec![],
-    }
-}
 
 impl Level {
     pub(crate) fn from_order(exchange: &str, update: OrderUpdate) -> Self {

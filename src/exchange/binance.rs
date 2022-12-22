@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 use tokio_tungstenite::tungstenite::protocol::Message;
 
-use crate::exchange_connection::{ExchangeClientConfig, OrderUpdate, OrderbookUpdate};
+use crate::exchange::exchange_client::{ExchangeClientConfig, OrderUpdate, OrderbookUpdate};
 
 const BINANCE_ADDR: &str = "wss://stream.binance.com:9443/ws";
 

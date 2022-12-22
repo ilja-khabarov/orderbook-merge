@@ -10,7 +10,7 @@ path = "src/server.rs"
 
 [[bin]]
 name = "orderbook-client"
-path = "src/client.rs"
+path = "client/client.rs"
 
 [dependencies]
 futures = "0.3.25"

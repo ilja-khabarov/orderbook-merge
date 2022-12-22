@@ -1,18 +1,15 @@
-mod binance;
-mod bitstamp;
-mod client;
-mod exchange_connection;
+mod exchange;
 mod grpc;
 mod merger;
 
 use tracing::info;
 use tracing_subscriber;
 
-use exchange_connection::OrderbookUpdate;
+use exchange::exchange_client::OrderbookUpdate;
 
-use crate::binance::BinanceClientConfig;
-use crate::bitstamp::BitstampClientConfig;
-use crate::exchange_connection::ExchangeClientConfig;
+use crate::exchange::binance::BinanceClientConfig;
+use crate::exchange::bitstamp::BitstampClientConfig;
+use crate::exchange::exchange_client::ExchangeClientConfig;
 use crate::grpc::run_grpc;
 
 const TOKIO_CHANNEL_BUFFER_SIZE: usize = 4096;
@@ -31,7 +28,7 @@ impl Server {
             tokio::sync::mpsc::channel::<OrderbookUpdate>(TOKIO_CHANNEL_BUFFER_SIZE);
         tokio::spawn(async move {
             // I'm open to talk about this unwrap(). Or any other, actually.
-            exchange_connection::run_exchange_client::<T>(write)
+            exchange::exchange_client::run_exchange_client::<T>(write)
                 .await
                 .unwrap();
         });
