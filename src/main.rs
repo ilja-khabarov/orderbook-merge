@@ -21,5 +21,7 @@ async fn main() {
         run_grpc(receiver).await.unwrap();
     });
 
-    tokio::join!(server_handle, grpc_handle);
+    let (server_result, grpc_result) = tokio::join!(server_handle, grpc_handle);
+    server_result.unwrap();
+    grpc_result.unwrap();
 }

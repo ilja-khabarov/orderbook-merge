@@ -3,9 +3,7 @@ use tokio::sync::{
     mpsc::{Receiver, Sender},
     Mutex,
 };
-use tracing::info;
 
-use crate::exchange::exchange_client::OrderUpdate;
 use crate::exchange::{
     binance::BinanceClientConfig,
     bitstamp::BitstampClientConfig,
@@ -44,13 +42,13 @@ impl Server {
                     let mut lock = merger.lock().await;
                     lock.update_exchange(BinanceClientConfig::get_name().to_string(), msg.unwrap());
                     let summary = lock.provide_summary();
-                    sender.send(summary).await;
+                    sender.send(summary).await.ok();
                 }
                 msg = bitstamp_receiver.recv() => {
                     let mut lock = merger.lock().await;
                     lock.update_exchange(BitstampClientConfig::get_name().to_string(), msg.unwrap());
                     let summary = lock.provide_summary();
-                    sender.send(summary).await;
+                    sender.send(summary).await.ok();
                 }
             }
         }

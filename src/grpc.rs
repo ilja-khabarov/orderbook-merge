@@ -5,7 +5,7 @@ use tokio_stream::wrappers::ReceiverStream;
 use tonic::{transport::Server, Request, Response, Status};
 use tracing::info;
 
-use crate::exchange::exchange_client::{OrderUpdate, OrderbookUpdate};
+use crate::exchange::exchange_client::OrderUpdate;
 
 pub mod proto {
     tonic::include_proto!("orderbook");
@@ -21,26 +21,6 @@ impl Level {
             exchange: exchange.to_string(),
             price,
             amount,
-        }
-    }
-}
-
-impl Summary {
-    pub(crate) fn from_orderbook(exchange: &str, orderbook_update: OrderbookUpdate) -> Self {
-        let bids = orderbook_update
-            .bids
-            .into_iter()
-            .map(|update| Level::from_order(exchange, update))
-            .collect();
-        let asks = orderbook_update
-            .asks
-            .into_iter()
-            .map(|update| Level::from_order(exchange, update))
-            .collect();
-        Summary {
-            spread: 1f64,
-            bids,
-            asks,
         }
     }
 }
