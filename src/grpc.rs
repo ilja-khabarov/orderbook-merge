@@ -25,6 +25,18 @@ impl Level {
     }
 }
 
+use std::cmp::Ordering;
+impl PartialOrd for Level {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        if self.price - other.price > 1e-10 {
+            return Some(Ordering::Greater);
+        } else if other.price - self.price > 1e-10 {
+            return Some(Ordering::Less);
+        }
+        Some(Ordering::Equal)
+    }
+}
+
 #[derive(Debug)]
 pub struct OrderbookService {
     summary_stream: Arc<Mutex<Receiver<Summary>>>,

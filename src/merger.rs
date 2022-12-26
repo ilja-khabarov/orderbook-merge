@@ -1,5 +1,6 @@
 use crate::exchange::exchange_client::OrderbookUpdate;
 use crate::grpc::proto::{Level, Summary};
+use itertools::Itertools;
 use std::collections::HashMap;
 
 type ExchangeName = String;
@@ -52,34 +53,14 @@ impl Merger {
     }
 
     fn merge_orders(is_ask: bool, orders_a: &Vec<Level>, orders_b: &Vec<Level>) -> Vec<Level> {
-        let mut aidx = 0;
-        let mut bidx = 0;
-        let mut merged = vec![];
-        if orders_a.len() == 0 {
-            for i in 0..10 {
-                if let Some(v) = orders_b.get(i) {
-                    merged.push(v.clone());
-                }
-            }
-            return merged;
-        }
+        let a_iter = orders_a.iter().take(10);
+        let b_iter = orders_b.iter().take(10);
 
-        for _i in 0..10 {
-            let a = orders_a.get(aidx).unwrap();
-            let b = orders_b.get(bidx).unwrap();
-
-            if (a.price < b.price) == is_ask {
-                // clone is expensive, but so easy
-                let level = orders_a.get(aidx).unwrap().clone();
-                merged.push(level);
-                aidx = aidx + 1;
-            } else {
-                let level = orders_b.get(bidx).unwrap().clone();
-                merged.push(level);
-                bidx = bidx + 1;
-            }
-        }
-        merged
+        a_iter
+            .merge_by(b_iter, |a, b| (a.price > b.price) == is_ask)
+            .take(10)
+            .cloned()
+            .collect()
     }
 }
 
