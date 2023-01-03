@@ -34,7 +34,7 @@ impl Merger {
         self.asks.insert(name, converted_bids);
     }
 
-    pub(crate) fn provide_summary(&self) -> Summary {
+    pub(crate) fn provide_summary(&self) -> Result<Summary> {
         let mut merged_asks = vec![];
         for (_, v) in self.asks.iter() {
             merged_asks = Self::merge_orders(true, &merged_asks, &v);
@@ -43,13 +43,20 @@ impl Merger {
         for (_, v) in self.bids.iter() {
             merged_bids = Self::merge_orders(false, &merged_bids, &v);
         }
-        let spread = merged_bids.get(0).unwrap().price - merged_asks.get(0).unwrap().price;
+        let spread = merged_bids
+            .get(0)
+            .ok_or(GeneralError::orders_format_error())?
+            .price
+            - merged_asks
+                .get(0)
+                .ok_or(GeneralError::orders_format_error())?
+                .price;
 
-        Summary {
+        Ok(Summary {
             spread,
             bids: merged_bids,
             asks: merged_asks,
-        }
+        })
     }
 
     fn merge_orders(is_ask: bool, orders_a: &Vec<Level>, orders_b: &Vec<Level>) -> Vec<Level> {
@@ -63,6 +70,8 @@ impl Merger {
             .collect()
     }
 }
+
+use crate::error::{GeneralError, Result};
 
 #[test]
 fn test_merge_orders() {

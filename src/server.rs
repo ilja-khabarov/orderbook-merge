@@ -41,13 +41,13 @@ impl Server {
                 msg = binance_receiver.recv() => {
                     let mut lock = merger.lock().await;
                     lock.update_exchange(BinanceClientConfig::get_name().to_string(), msg.unwrap());
-                    let summary = lock.provide_summary();
+                    let summary = lock.provide_summary().unwrap();
                     sender.send(summary).await.ok();
                 }
                 msg = bitstamp_receiver.recv() => {
                     let mut lock = merger.lock().await;
                     lock.update_exchange(BitstampClientConfig::get_name().to_string(), msg.unwrap());
-                    let summary = lock.provide_summary();
+                    let summary = lock.provide_summary().unwrap();
                     sender.send(summary).await.ok();
                 }
             }

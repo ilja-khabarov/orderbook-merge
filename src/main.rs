@@ -1,3 +1,4 @@
+mod error;
 mod exchange;
 mod grpc;
 mod merger;
