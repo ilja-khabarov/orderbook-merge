@@ -39,16 +39,28 @@ impl Server {
         loop {
             tokio::select! {
                 msg = binance_receiver.recv() => {
-                    let mut lock = merger.lock().await;
-                    lock.update_exchange(BinanceClientConfig::get_name().to_string(), msg.unwrap());
-                    let summary = lock.provide_summary();
-                    sender.send(summary).await.ok();
+                    if let Some(msg) = msg {
+                        let mut lock = merger.lock().await;
+                        lock.update_exchange(BinanceClientConfig::get_name().to_string(), msg);
+                        match lock.provide_summary() {
+                            Ok(summary) => {
+                                sender.send(summary).await.ok();
+                            },
+                            Err(e) => tracing::error!("{:?}", e),
+                        }
+                    }
                 }
                 msg = bitstamp_receiver.recv() => {
-                    let mut lock = merger.lock().await;
-                    lock.update_exchange(BitstampClientConfig::get_name().to_string(), msg.unwrap());
-                    let summary = lock.provide_summary();
-                    sender.send(summary).await.ok();
+                    if let Some(msg) = msg {
+                        let mut lock = merger.lock().await;
+                        lock.update_exchange(BitstampClientConfig::get_name().to_string(), msg);
+                        match lock.provide_summary() {
+                            Ok(summary) => {
+                                sender.send(summary).await.ok();
+                            },
+                            Err(e) => tracing::error!("{:?}", e),
+                        }
+                    }
                 }
             }
         }

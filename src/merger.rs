@@ -1,3 +1,4 @@
+use crate::error::{GeneralError, OrderbookResult};
 use crate::exchange::exchange_client::OrderbookUpdate;
 use crate::grpc::proto::{Level, Summary};
 use itertools::Itertools;
@@ -17,24 +18,29 @@ impl Merger {
         }
     }
 
-    pub(crate) fn update_exchange(&mut self, name: ExchangeName, orders: OrderbookUpdate) {
+    pub(crate) fn update_exchange(
+        &mut self,
+        name: ExchangeName,
+        orders: OrderbookUpdate,
+    ) -> OrderbookResult<()> {
         self.asks.remove(&name);
         self.bids.remove(&name);
         let asks_size = std::cmp::max(10, orders.asks.len());
         let mut converted_asks = vec![];
         for i in 0..asks_size {
-            converted_asks.push(Level::from_order(&name, orders.asks[i].clone()));
+            converted_asks.push(Level::from_order(&name, orders.asks[i].clone())?);
         }
         let bids_size = std::cmp::max(10, orders.bids.len());
         let mut converted_bids = vec![];
         for i in 0..bids_size {
-            converted_bids.push(Level::from_order(&name, orders.bids[i].clone()));
+            converted_bids.push(Level::from_order(&name, orders.bids[i].clone())?);
         }
         self.bids.insert(name.clone(), converted_asks);
         self.asks.insert(name, converted_bids);
+        Ok(())
     }
 
-    pub(crate) fn provide_summary(&self) -> Summary {
+    pub(crate) fn provide_summary(&self) -> OrderbookResult<Summary> {
         let mut merged_asks = vec![];
         for (_, v) in self.asks.iter() {
             merged_asks = Self::merge_orders(true, &merged_asks, &v);
@@ -43,13 +49,20 @@ impl Merger {
         for (_, v) in self.bids.iter() {
             merged_bids = Self::merge_orders(false, &merged_bids, &v);
         }
-        let spread = merged_bids.get(0).unwrap().price - merged_asks.get(0).unwrap().price;
+        let spread = merged_bids
+            .get(0)
+            .ok_or(GeneralError::orders_format_error())?
+            .price
+            - merged_asks
+                .get(0)
+                .ok_or(GeneralError::orders_format_error())?
+                .price;
 
-        Summary {
+        Ok(Summary {
             spread,
             bids: merged_bids,
             asks: merged_asks,
-        }
+        })
     }
 
     fn merge_orders(is_ask: bool, orders_a: &Vec<Level>, orders_b: &Vec<Level>) -> Vec<Level> {

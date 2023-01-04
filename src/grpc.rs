@@ -13,15 +13,24 @@ pub mod proto {
 use proto::orderbook_aggregator_server::{OrderbookAggregator, OrderbookAggregatorServer};
 use proto::{Empty, Level, Summary};
 
+use crate::error::{GeneralError, OrderbookResult};
 impl Level {
-    pub(crate) fn from_order(exchange: &str, update: OrderUpdate) -> Self {
-        let price = update.0.get(0).unwrap().parse().unwrap();
-        let amount = update.0.get(1).unwrap().parse().unwrap();
-        Level {
+    pub(crate) fn from_order(exchange: &str, update: OrderUpdate) -> OrderbookResult<Self> {
+        let price = update
+            .0
+            .get(0)
+            .ok_or(GeneralError::orders_format_error())?
+            .parse()?;
+        let amount = update
+            .0
+            .get(1)
+            .ok_or(GeneralError::orders_format_error())?
+            .parse()?;
+        Ok(Level {
             exchange: exchange.to_string(),
             price,
             amount,
-        }
+        })
     }
 }
 
@@ -77,7 +86,7 @@ impl OrderbookAggregator for OrderbookService {
 }
 
 pub async fn run_grpc(receiver: Receiver<Summary>) -> anyhow::Result<()> {
-    let address = "0.0.0.0:8080".parse().unwrap();
+    let address = "0.0.0.0:8080".parse()?;
     let voting_service = OrderbookService::init(receiver);
 
     Server::builder()
