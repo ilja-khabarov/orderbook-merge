@@ -87,10 +87,10 @@ impl OrderbookAggregator for OrderbookService {
 
 pub async fn run_grpc(receiver: Receiver<Summary>) -> anyhow::Result<()> {
     let address = "0.0.0.0:8080".parse()?;
-    let voting_service = OrderbookService::init(receiver);
+    let service = OrderbookService::init(receiver);
 
     Server::builder()
-        .add_service(OrderbookAggregatorServer::new(voting_service))
+        .add_service(OrderbookAggregatorServer::new(service))
         .serve(address)
         .await?;
     Ok(())
