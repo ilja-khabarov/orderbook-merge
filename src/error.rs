@@ -1,4 +1,3 @@
-use futures_util::future::err;
 use std::num::{ParseFloatError, ParseIntError};
 use thiserror::Error;
 
@@ -9,15 +8,10 @@ pub enum GeneralError {
     DataError(String),
     #[error("ParseError: {0}")]
     ParseError(String),
-    #[error("Error message not provided")]
-    UndefinedError,
 }
 
 impl GeneralError {
     pub(crate) fn orders_format_error() -> Self {
-        Self::DataError("Exchange provided inconsistent data".to_string())
-    }
-    pub(crate) fn parse_error() -> Self {
         Self::DataError("Exchange provided inconsistent data".to_string())
     }
 }

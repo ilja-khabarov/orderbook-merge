@@ -6,6 +6,7 @@ mod server;
 
 use tracing_subscriber;
 
+use crate::grpc::proto::Summary;
 use crate::grpc::run_grpc;
 use server::Server;
 
@@ -13,7 +14,7 @@ use server::Server;
 async fn main() {
     tracing_subscriber::fmt::init();
 
-    let (sender, receiver) = tokio::sync::mpsc::channel(4096);
+    let (sender, receiver) = tokio::sync::watch::channel(Summary::default());
 
     let server_handle = tokio::spawn(async move {
         Server::run_server(sender).await;
