@@ -1,8 +1,5 @@
 use std::sync::Arc;
-use tokio::sync::{
-    mpsc::{Receiver, Sender},
-    Mutex,
-};
+use tokio::sync::{mpsc::Receiver, watch::Sender as MultiSender, Mutex};
 
 use crate::exchange::{
     binance::BinanceClientConfig,
@@ -31,7 +28,7 @@ impl Server {
         return read;
     }
 
-    pub(crate) async fn run_server(sender: Sender<Summary>) {
+    pub(crate) async fn run_server(sender: MultiSender<Summary>) {
         let mut binance_receiver = Self::run_exchange_client::<BinanceClientConfig>();
         let mut bitstamp_receiver = Self::run_exchange_client::<BitstampClientConfig>();
         let merger = Arc::new(Mutex::new(Merger::new()));
@@ -44,7 +41,7 @@ impl Server {
                         lock.update_exchange(BinanceClientConfig::get_name().to_string(), msg);
                         match lock.provide_summary() {
                             Ok(summary) => {
-                                sender.send(summary).await.ok();
+                                sender.send(summary).ok();
                             },
                             Err(e) => tracing::error!("{:?}", e),
                         }
@@ -56,7 +53,7 @@ impl Server {
                         lock.update_exchange(BitstampClientConfig::get_name().to_string(), msg);
                         match lock.provide_summary() {
                             Ok(summary) => {
-                                sender.send(summary).await.ok();
+                                sender.send(summary).ok();
                             },
                             Err(e) => tracing::error!("{:?}", e),
                         }

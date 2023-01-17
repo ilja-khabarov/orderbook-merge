@@ -1,6 +1,7 @@
 use futures::lock::Mutex;
 use std::sync::Arc;
-use tokio::sync::mpsc::{self, Receiver};
+use tokio::sync::mpsc::{self};
+use tokio::sync::watch::Receiver as MultiReceiver;
 use tokio_stream::wrappers::ReceiverStream;
 use tonic::{transport::Server, Request, Response, Status};
 use tracing::info;
@@ -48,11 +49,11 @@ impl PartialOrd for Level {
 
 #[derive(Debug)]
 pub struct OrderbookService {
-    summary_stream: Arc<Mutex<Receiver<Summary>>>,
+    summary_stream: Arc<Mutex<MultiReceiver<Summary>>>,
 }
 
 impl OrderbookService {
-    pub(crate) fn init(summary_stream: Receiver<Summary>) -> Self {
+    pub(crate) fn init(summary_stream: MultiReceiver<Summary>) -> Self {
         Self {
             summary_stream: Arc::new(Mutex::new(summary_stream)),
         }
@@ -72,11 +73,16 @@ impl OrderbookAggregator for OrderbookService {
         let (tx, rx) = mpsc::channel(4096);
 
         let m = self.summary_stream.clone();
+        let tx = tx.clone();
         tokio::spawn(async move {
-            let mut m = m.lock().await;
+            let mut local_receiver = m.lock().await.clone();
             loop {
-                if let Some(v) = m.recv().await {
-                    tx.send(Ok(v)).await.ok();
+                if let Ok(()) = local_receiver.changed().await {
+                    let summary: Summary = local_receiver.borrow().clone();
+                    if let Err(_) = tx.send(Ok(summary)).await {
+                        info!("Client connection closed");
+                        break;
+                    }
                 }
             }
         });
@@ -85,7 +91,7 @@ impl OrderbookAggregator for OrderbookService {
     }
 }
 
-pub async fn run_grpc(receiver: Receiver<Summary>) -> anyhow::Result<()> {
+pub async fn run_grpc(receiver: MultiReceiver<Summary>) -> anyhow::Result<()> {
     let address = "0.0.0.0:8080".parse()?;
     let service = OrderbookService::init(receiver);
 
