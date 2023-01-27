@@ -8,6 +8,8 @@ use tokio::sync::mpsc::Sender;
 use tokio_tungstenite::{tungstenite::protocol::Message, MaybeTlsStream, WebSocketStream};
 use tracing::{error, info};
 
+use crate::error::{GeneralError, OrderbookResult};
+
 type WsWriteChannel = SplitSink<WebSocketStream<MaybeTlsStream<TcpStream>>, Message>;
 type WsReadChannel = SplitStream<WebSocketStream<MaybeTlsStream<TcpStream>>>;
 
@@ -24,12 +26,12 @@ pub(crate) trait ExchangeClientConfig {
     fn get_name() -> &'static str;
     fn get_address() -> &'static str;
     fn get_subscription_message() -> &'static str;
-    fn message_handler(message: Message) -> anyhow::Result<OrderbookUpdate>;
+    fn message_handler(message: Message) -> OrderbookResult<OrderbookUpdate>;
 }
 
 pub(crate) async fn run_exchange_client<T>(
     local_write_channel: Sender<OrderbookUpdate>,
-) -> anyhow::Result<()>
+) -> OrderbookResult<()>
 where
     T: ExchangeClientConfig,
 {
@@ -62,9 +64,11 @@ impl ExchangeClient {
         read: &mut WsReadChannel,
         write: &mut WsWriteChannel,
         message_text: &str,
-    ) -> anyhow::Result<()> {
+    ) -> OrderbookResult<()> {
         let msg: Message = Message::text(message_text);
-        write.send(msg).await?;
+        write.send(msg.clone()).await.map_err(|_| {
+            GeneralError::connection_error("Failed to send subscribe message".to_string())
+        })?;
         info!("Subscribe sent");
         let response = read.next().await;
         match response {
@@ -83,7 +87,7 @@ impl ExchangeClient {
     }
     pub(crate) async fn run<F>(&mut self, read: WsReadChannel, handler: F) -> ()
     where
-        F: Fn(Message) -> anyhow::Result<OrderbookUpdate>,
+        F: Fn(Message) -> OrderbookResult<OrderbookUpdate>,
     {
         read.for_each(|message| async {
             match message {

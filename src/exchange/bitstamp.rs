@@ -1,6 +1,7 @@
 use serde::{Deserialize, Serialize};
 use tokio_tungstenite::tungstenite::protocol::Message;
 
+use crate::error::OrderbookResult;
 use crate::exchange::exchange_client::{ExchangeClientConfig, OrderUpdate, OrderbookUpdate};
 
 const BITSTAMP_ADDRESS: &str = "wss://ws.bitstamp.net";
@@ -40,7 +41,7 @@ impl ExchangeClientConfig for BitstampClientConfig {
     fn get_subscription_message() -> &'static str {
         BITSTAMP_SUBSCRIBE
     }
-    fn message_handler(message: Message) -> anyhow::Result<OrderbookUpdate> {
+    fn message_handler(message: Message) -> OrderbookResult<OrderbookUpdate> {
         let data = message.into_data();
         serde_json::from_slice::<BitstampResponse>(&data)
             .map(|response| OrderbookUpdate {

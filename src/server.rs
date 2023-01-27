@@ -38,7 +38,7 @@ impl Server {
                 msg = binance_receiver.recv() => {
                     if let Some(msg) = msg {
                         let mut lock = merger.lock().await;
-                        lock.update_exchange(BinanceClientConfig::get_name().to_string(), msg);
+                        lock.update_exchange(BinanceClientConfig::get_name().to_string(), msg).ok();
                         match lock.provide_summary() {
                             Ok(summary) => {
                                 sender.send(summary).ok();
@@ -50,7 +50,7 @@ impl Server {
                 msg = bitstamp_receiver.recv() => {
                     if let Some(msg) = msg {
                         let mut lock = merger.lock().await;
-                        lock.update_exchange(BitstampClientConfig::get_name().to_string(), msg);
+                        lock.update_exchange(BitstampClientConfig::get_name().to_string(), msg).ok();
                         match lock.provide_summary() {
                             Ok(summary) => {
                                 sender.send(summary).ok();

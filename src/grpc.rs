@@ -91,7 +91,7 @@ impl OrderbookAggregator for OrderbookService {
     }
 }
 
-pub async fn run_grpc(receiver: MultiReceiver<Summary>) -> anyhow::Result<()> {
+pub async fn run_grpc(receiver: MultiReceiver<Summary>) -> Result<(), Box<dyn std::error::Error>> {
     let address = "0.0.0.0:8080".parse()?;
     let service = OrderbookService::init(receiver);
 

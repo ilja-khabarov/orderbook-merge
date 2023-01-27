@@ -1,6 +1,7 @@
 use serde::{Deserialize, Serialize};
 use tokio_tungstenite::tungstenite::protocol::Message;
 
+use crate::error::OrderbookResult;
 use crate::exchange::exchange_client::{ExchangeClientConfig, OrderUpdate, OrderbookUpdate};
 
 const BINANCE_ADDR: &str = "wss://stream.binance.com:9443/ws";
@@ -33,7 +34,7 @@ impl ExchangeClientConfig for BinanceClientConfig {
         BINANCE_SUBSCRIBE
     }
 
-    fn message_handler(message: Message) -> anyhow::Result<OrderbookUpdate> {
+    fn message_handler(message: Message) -> OrderbookResult<OrderbookUpdate> {
         let data = message.into_data();
         serde_json::from_slice::<BinanceResponse>(&data)
             .map(|response| OrderbookUpdate {
