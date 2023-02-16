@@ -25,12 +25,12 @@ impl Merger {
     ) -> OrderbookResult<()> {
         self.asks.remove(&name);
         self.bids.remove(&name);
-        let asks_size = std::cmp::max(10, orders.asks.len());
+        let asks_size = std::cmp::min(10, orders.asks.len());
         let mut converted_asks = vec![];
         for i in 0..asks_size {
             converted_asks.push(Level::from_order(&name, orders.asks[i].clone())?);
         }
-        let bids_size = std::cmp::max(10, orders.bids.len());
+        let bids_size = std::cmp::min(10, orders.bids.len());
         let mut converted_bids = vec![];
         for i in 0..bids_size {
             converted_bids.push(Level::from_order(&name, orders.bids[i].clone())?);
@@ -68,7 +68,6 @@ impl Merger {
     fn merge_orders(is_ask: bool, orders_a: &Vec<Level>, orders_b: &Vec<Level>) -> Vec<Level> {
         let a_iter = orders_a.iter().take(10);
         let b_iter = orders_b.iter().take(10);
-
         a_iter
             .merge_by(b_iter, |a, b| (a.price > b.price) == is_ask)
             .take(10)
