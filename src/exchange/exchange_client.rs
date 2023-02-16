@@ -22,10 +22,24 @@ pub(crate) struct OrderbookUpdate {
     pub asks: Vec<OrderUpdate>,
 }
 
+pub(crate) struct TradingPair {
+    pub(crate) first_currency: String,
+    pub(crate) second_currency: String,
+}
+
+impl Default for TradingPair {
+    fn default() -> Self {
+        Self {
+            first_currency: "eth".to_string(),
+            second_currency: "btc".to_string(),
+        }
+    }
+}
+
 pub(crate) trait ExchangeClientConfig {
     fn get_name() -> &'static str;
     fn get_address() -> &'static str;
-    fn get_subscription_message() -> &'static str;
+    fn get_subscription_message(pair: TradingPair) -> String;
     fn message_handler(message: Message) -> OrderbookResult<OrderbookUpdate>;
 }
 
@@ -37,7 +51,12 @@ where
 {
     let mut client = ExchangeClient::init(local_write_channel);
     let (mut ws_write, mut ws_read) = ExchangeClient::init_connectors(T::get_address()).await;
-    ExchangeClient::subscribe(&mut ws_read, &mut ws_write, T::get_subscription_message()).await?;
+    ExchangeClient::subscribe(
+        &mut ws_read,
+        &mut ws_write,
+        &T::get_subscription_message(TradingPair::default()),
+    )
+    .await?;
     client.run(ws_read, T::message_handler).await;
     Ok(())
 }
@@ -93,7 +112,7 @@ impl ExchangeClient {
             match message {
                 Ok(m) => {
                     if let Ok(update_converted) = handler(m) {
-                        self.sink.send(update_converted).await.ok();
+                        self.sink.send(update_converted).await.expect("Booo");
                     }
                 }
                 Err(_) => error!("Failed to parse a message from exchange. Skipping response"),
