@@ -36,6 +36,7 @@ impl Level {
 }
 
 use std::cmp::Ordering;
+
 impl PartialOrd for Level {
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
         if self.price - other.price > 1e-10 {
@@ -73,7 +74,6 @@ impl OrderbookAggregator for OrderbookService {
         let (tx, rx) = mpsc::channel(4096);
 
         let m = self.summary_stream.clone();
-        let tx = tx.clone();
         tokio::spawn(async move {
             let mut local_receiver = m.lock().await.clone();
             loop {
