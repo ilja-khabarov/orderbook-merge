@@ -22,6 +22,7 @@ pub(crate) struct OrderbookUpdate {
     pub asks: Vec<OrderUpdate>,
 }
 
+#[derive(Clone)]
 pub(crate) struct TradingPair {
     pub(crate) first_currency: String,
     pub(crate) second_currency: String,
@@ -45,6 +46,7 @@ pub(crate) trait ExchangeClientConfig {
 
 pub(crate) async fn run_exchange_client<T>(
     local_write_channel: Sender<OrderbookUpdate>,
+    trading_pair: TradingPair,
 ) -> OrderbookResult<()>
 where
     T: ExchangeClientConfig,
@@ -54,7 +56,7 @@ where
     ExchangeClient::subscribe(
         &mut ws_read,
         &mut ws_write,
-        &T::get_subscription_message(TradingPair::default()),
+        &T::get_subscription_message(trading_pair),
     )
     .await?;
     client.run(ws_read, T::message_handler).await;
@@ -112,7 +114,7 @@ impl ExchangeClient {
             match message {
                 Ok(m) => {
                     if let Ok(update_converted) = handler(m) {
-                        self.sink.send(update_converted).await.expect("Booo");
+                        self.sink.send(update_converted).await.ok();
                     }
                 }
                 Err(_) => error!("Failed to parse a message from exchange. Skipping response"),

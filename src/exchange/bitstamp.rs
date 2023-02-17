@@ -108,8 +108,7 @@ impl ExchangeClientConfig for BitstampClientConfig {
         BITSTAMP_ADDRESS
     }
     fn get_subscription_message(pair: TradingPair) -> String {
-        //BitstampSubMessage::subscribe_to_pair(pair).to_string()
-        BITSTAMP_SUBSCRIBE.to_string()
+        BitstampSubMessage::subscribe_to_pair(pair).to_string()
     }
     fn message_handler(message: Message) -> OrderbookResult<OrderbookUpdate> {
         let data = message.into_data();
