@@ -41,6 +41,7 @@ impl Server {
                     if let Some(msg) = msg {
                         let mut lock = merger.lock().await;
                         lock.update_exchange(BinanceClientConfig::get_name().to_string(), msg).ok();
+                        tracing::debug!("Got a response from Binance");
                         match lock.provide_summary() {
                             Ok(summary) => {
                                 sender.send(summary).ok();
@@ -53,6 +54,7 @@ impl Server {
                     if let Some(msg) = msg {
                         let mut lock = merger.lock().await;
                         lock.update_exchange(BitstampClientConfig::get_name().to_string(), msg).ok();
+                        tracing::debug!("Got a response from Stamp");
                         match lock.provide_summary() {
                             Ok(summary) => {
                                 sender.send(summary).ok();
