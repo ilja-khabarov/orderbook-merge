@@ -11,10 +11,18 @@ use crate::grpc::proto::Summary;
 use crate::grpc::run_grpc;
 use server::Server;
 
+use std::env;
+
 #[tokio::main]
 async fn main() {
     tracing_subscriber::fmt::init();
-    let trading_pair = TradingPair::default();
+    let args: Vec<String> = env::args().collect();
+    println!("{} {}", args[1], args[2]);
+
+    let trading_pair = TradingPair {
+        first_currency: args[1].clone(),
+        second_currency: args[2].clone(),
+    };
 
     let (sender, receiver) = tokio::sync::watch::channel(Summary::default());
 
