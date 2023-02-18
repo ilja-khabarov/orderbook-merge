@@ -5,6 +5,8 @@ use itertools::Itertools;
 use std::collections::HashMap;
 
 type ExchangeName = String;
+
+/// We store `Level`s for each exchange to merge them after.
 pub(crate) struct Merger {
     asks: HashMap<ExchangeName, Vec<Level>>,
     bids: HashMap<ExchangeName, Vec<Level>>,
@@ -18,6 +20,7 @@ impl Merger {
         }
     }
 
+    /// Replace all existing asks and bids for given exchange with the new ones.
     pub(crate) fn update_exchange(
         &mut self,
         name: ExchangeName,
@@ -25,21 +28,26 @@ impl Merger {
     ) -> OrderbookResult<()> {
         self.asks.remove(&name);
         self.bids.remove(&name);
-        let asks_size = std::cmp::min(10, orders.asks.len());
-        let mut converted_asks = vec![];
-        for i in 0..asks_size {
-            converted_asks.push(Level::from_order(&name, orders.asks[i].clone())?);
-        }
-        let bids_size = std::cmp::min(10, orders.bids.len());
-        let mut converted_bids = vec![];
-        for i in 0..bids_size {
-            converted_bids.push(Level::from_order(&name, orders.bids[i].clone())?);
-        }
-        self.bids.insert(name.clone(), converted_asks);
-        self.asks.insert(name, converted_bids);
+
+        let converted_asks: OrderbookResult<Vec<Level>> = orders
+            .asks
+            .into_iter()
+            .take(10)
+            .map(|order_update| Level::from_order(&name, order_update))
+            .collect();
+        self.bids.insert(name.clone(), converted_asks?);
+
+        let converted_bids: OrderbookResult<Vec<Level>> = orders
+            .bids
+            .into_iter()
+            .take(10)
+            .map(|order_update| Level::from_order(&name, order_update))
+            .collect();
+        self.asks.insert(name, converted_bids?);
         Ok(())
     }
 
+    /// Merge all the asks and bids and provide them into summary.
     pub(crate) fn provide_summary(&self) -> OrderbookResult<Summary> {
         let mut merged_asks = vec![];
         for (_, v) in self.asks.iter() {
@@ -65,6 +73,7 @@ impl Merger {
         })
     }
 
+    /// Merge two vectors of asks/bids.
     fn merge_orders(is_ask: bool, orders_a: &Vec<Level>, orders_b: &Vec<Level>) -> Vec<Level> {
         let a_iter = orders_a.iter().take(10);
         let b_iter = orders_b.iter().take(10);
