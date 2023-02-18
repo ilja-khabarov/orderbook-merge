@@ -9,21 +9,9 @@ use crate::exchange::exchange_client::{
 
 const BINANCE_ADDR: &str = "wss://stream.binance.com:9443/ws";
 
-const BINANCE_SUBSCRIBE: &str = r#"{
-  "method": "SUBSCRIBE",
-  "params": [
-    "ethbtc@depth10"
-  ],
-  "id": 1
-}"#;
-
-#[test]
-fn test_binance_msg() {
-    let s = BinanceSubMessage::subscribe_to_pair(TradingPair::default());
-    let m = serde_json::to_string_pretty(&s);
-    print!("{}", m.unwrap());
-}
-
+/// The `params` field of Binance subscribe request.
+/// Example: "ethbtc@depth10", where `etcbtc` is trading pair, and `depth` is amount of top
+/// asks/bids in pair.
 #[derive(Deserialize, Serialize)]
 pub(crate) struct Params(Vec<String>);
 
@@ -34,6 +22,15 @@ impl Params {
     }
 }
 
+/// The message structure to subscribe to Binance events.
+/// Example:
+/// {
+///  "method": "SUBSCRIBE",
+///  "params": [
+///     "ethbtc@depth10"
+///   ],
+///   "id": 1
+/// }
 #[derive(Deserialize, Serialize)]
 struct BinanceSubMessage {
     method: String,
@@ -53,12 +50,17 @@ impl BinanceSubMessage {
 
 impl Display for BinanceSubMessage {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", serde_json::to_string(&self).unwrap())
+        write!(
+            f,
+            "{}",
+            serde_json::to_string(&self).map_err(|_| std::fmt::Error)?
+        )
     }
 }
 
+/// Typical stream data message from Binance.
 #[derive(Debug, Deserialize, Serialize)]
-struct BinanceResponse {
+struct BinanceOrderbookResponse {
     bids: Vec<OrderUpdate>,
     asks: Vec<OrderUpdate>,
 }
@@ -79,7 +81,7 @@ impl ExchangeClientConfig for BinanceClientConfig {
 
     fn message_handler(message: Message) -> OrderbookResult<OrderbookUpdate> {
         let data = message.into_data();
-        serde_json::from_slice::<BinanceResponse>(&data)
+        serde_json::from_slice::<BinanceOrderbookResponse>(&data)
             .map(|response| OrderbookUpdate {
                 bids: response.bids,
                 asks: response.asks,

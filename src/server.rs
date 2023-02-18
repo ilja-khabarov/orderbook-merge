@@ -21,7 +21,6 @@ impl Server {
         let (write, read) =
             tokio::sync::mpsc::channel::<OrderbookUpdate>(TOKIO_CHANNEL_BUFFER_SIZE);
         tokio::spawn(async move {
-            // I'm open to talk about this unwrap(). Or any other, actually.
             crate::exchange::exchange_client::run_exchange_client::<T>(write, trading_pair)
                 .await
                 .unwrap();

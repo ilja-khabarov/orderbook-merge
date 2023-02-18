@@ -13,15 +13,19 @@ use crate::error::{GeneralError, OrderbookResult};
 type WsWriteChannel = SplitSink<WebSocketStream<MaybeTlsStream<TcpStream>>, Message>;
 type WsReadChannel = SplitStream<WebSocketStream<MaybeTlsStream<TcpStream>>>;
 
+/// Simple exchange-agnostic `ask` or `bid` level.
+/// Consists of two elements: <price> and <amount>.
 #[derive(Debug, Deserialize, Serialize, Clone)]
 pub(crate) struct OrderUpdate(pub Vec<String>);
 
+/// Whole orderbook update. A pair of vectors of `OrderUpdate`.
 #[derive(Debug, Deserialize, Serialize)]
 pub(crate) struct OrderbookUpdate {
     pub bids: Vec<OrderUpdate>,
     pub asks: Vec<OrderUpdate>,
 }
 
+/// A pair of currencies. Rate is calculated as `first_currency`/`second_currency`.
 #[derive(Clone)]
 pub(crate) struct TradingPair {
     pub(crate) first_currency: String,
@@ -37,13 +41,19 @@ impl Default for TradingPair {
     }
 }
 
+/// Trait to implement for any exchange connection.
 pub(crate) trait ExchangeClientConfig {
+    /// Exchange name. Convention is to use it in snake case. E.g. `binance`.
     fn get_name() -> &'static str;
+    /// Exchange websocket address. E.g. `wss://stream.binance.com:9443/ws`
     fn get_address() -> &'static str;
+    /// Message to send to the exchange to subscribe on orderbook update events.
     fn get_subscription_message(pair: TradingPair) -> String;
+    /// A function to convert message from the exchange format to local format.
     fn message_handler(message: Message) -> OrderbookResult<OrderbookUpdate>;
 }
 
+/// Runs an asynchronous exchange client.
 pub(crate) async fn run_exchange_client<T>(
     local_write_channel: Sender<OrderbookUpdate>,
     trading_pair: TradingPair,
@@ -63,6 +73,8 @@ where
     Ok(())
 }
 
+/// Generic implementation of an exchange client.
+/// Contains a simple 'sink' that is a sender channel to connect to a grpc server.
 pub(crate) struct ExchangeClient {
     sink: Sender<OrderbookUpdate>,
 }
@@ -71,6 +83,8 @@ impl ExchangeClient {
     pub(crate) fn init(sink: Sender<OrderbookUpdate>) -> Self {
         Self { sink }
     }
+
+    /// Creates connectors to send/recv data from an exchange.
     pub(crate) async fn init_connectors(address: &str) -> (WsWriteChannel, WsReadChannel) {
         let url = url::Url::parse(&address).expect(&format!("Failed to parse URL: {}", address));
 
@@ -81,6 +95,10 @@ impl ExchangeClient {
 
         ws_stream.split()
     }
+
+    /// Send a response message and receive response.
+    /// Currently just dumps the response.
+    /// todo: Process response.
     pub(crate) async fn subscribe(
         read: &mut WsReadChannel,
         write: &mut WsWriteChannel,
@@ -106,6 +124,9 @@ impl ExchangeClient {
         }
         Ok(())
     }
+
+    /// The client runner.
+    /// Get message from the subscription channel, process it and send it further to the sink.
     pub(crate) async fn run<F>(&mut self, read: WsReadChannel, handler: F) -> ()
     where
         F: Fn(Message) -> OrderbookResult<OrderbookUpdate>,

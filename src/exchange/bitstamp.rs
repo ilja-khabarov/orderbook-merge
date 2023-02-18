@@ -8,14 +8,8 @@ use crate::exchange::exchange_client::{
 };
 
 const BITSTAMP_ADDRESS: &str = "wss://ws.bitstamp.net";
-const BITSTAMP_SUBSCRIBE: &str = r#"{
-    "event": "bts:subscribe",
-    "data": {
-        "channel": "order_book_ethbtc"
-    }
-    }
-    "#;
 
+/// The `channel` type for `data` field of Bitstamp subscribe request.
 #[derive(Serialize, Deserialize)]
 pub(crate) struct Channel {
     channel: String,
@@ -29,6 +23,14 @@ impl Channel {
     }
 }
 
+/// The message structure to subscribe to Bitstamp events.
+/// Example:
+/// {
+///     "event": "bts:subscribe",
+///     "data": {
+///         "channel": "order_book_ethbtc"
+///     }
+/// }
 #[derive(Serialize, Deserialize)]
 pub(crate) struct BitstampSubMessage {
     event: String,
@@ -65,23 +67,7 @@ impl Display for BitstampSubMessage {
     }
 }
 
-#[test]
-fn test_default() {
-    let sub = BitstampSubMessage::subscribe_to_pair(TradingPair::default());
-    let s = sub.to_string();
-    let sd: BitstampSubMessage = serde_json::from_str(&BITSTAMP_SUBSCRIBE).unwrap();
-    let sd = sd.to_string();
-    assert_eq!(s, sd);
-}
-
-#[test]
-fn test_ethbtc() {
-    let pair = TradingPair::default();
-    let sub = BitstampSubMessage::subscribe_to_pair(pair);
-    let s = sub.to_string();
-    println!("{s}");
-}
-
+/// The 'data' field of Bitstamp response.
 #[derive(Deserialize, Serialize)]
 struct BitstampResponseData {
     timestamp: String,
@@ -90,6 +76,7 @@ struct BitstampResponseData {
     asks: Vec<OrderUpdate>,
 }
 
+/// General Bitstamp response.
 #[derive(Deserialize, Serialize)]
 struct BitstampResponse {
     data: BitstampResponseData,

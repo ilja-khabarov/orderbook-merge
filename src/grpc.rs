@@ -1,4 +1,5 @@
 use futures::lock::Mutex;
+use std::cmp::Ordering;
 use std::sync::Arc;
 use tokio::sync::mpsc::{self};
 use tokio::sync::watch::Receiver as MultiReceiver;
@@ -6,6 +7,7 @@ use tokio_stream::wrappers::ReceiverStream;
 use tonic::{transport::Server, Request, Response, Status};
 use tracing::info;
 
+use crate::error::{GeneralError, OrderbookResult};
 use crate::exchange::exchange_client::OrderUpdate;
 
 pub mod proto {
@@ -14,7 +16,6 @@ pub mod proto {
 use proto::orderbook_aggregator_server::{OrderbookAggregator, OrderbookAggregatorServer};
 use proto::{Empty, Level, Summary};
 
-use crate::error::{GeneralError, OrderbookResult};
 impl Level {
     pub(crate) fn from_order(exchange: &str, update: OrderUpdate) -> OrderbookResult<Self> {
         let price = update
@@ -35,8 +36,6 @@ impl Level {
     }
 }
 
-use std::cmp::Ordering;
-
 impl PartialOrd for Level {
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
         if self.price - other.price > 1e-10 {
@@ -48,6 +47,7 @@ impl PartialOrd for Level {
     }
 }
 
+/// Tonic server to provide data to grpc clients.
 #[derive(Debug)]
 pub struct OrderbookService {
     summary_stream: Arc<Mutex<MultiReceiver<Summary>>>,
