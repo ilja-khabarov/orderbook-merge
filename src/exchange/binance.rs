@@ -2,10 +2,13 @@ use serde::{Deserialize, Serialize};
 use std::fmt::{Display, Formatter};
 use tokio_tungstenite::tungstenite::protocol::Message;
 
+use crate::error::GeneralError;
 use crate::error::OrderbookResult;
-use crate::exchange::exchange_client::{
-    ExchangeClientConfig, OrderUpdate, OrderbookUpdate, TradingPair,
-};
+use crate::exchange::exchange_client::{ExchangeClient2, WsReadChannel, WsWriteChannel};
+use crate::exchange::exchange_client::{OrderUpdate, OrderbookUpdate, TradingPair};
+use futures_util::{SinkExt, StreamExt};
+use tokio::sync::mpsc::Sender;
+use tracing::{error, info};
 
 const BINANCE_ADDR: &str = "wss://stream.binance.com:9443/ws";
 
@@ -65,9 +68,14 @@ struct BinanceOrderbookResponse {
     asks: Vec<OrderUpdate>,
 }
 
-pub(crate) struct BinanceClientConfig;
+pub(crate) struct BinanceClient {
+    binance_read_channel: WsReadChannel,
+    binance_write_channel: WsWriteChannel,
+    grpc_sink: Sender<OrderbookUpdate>,
+}
 
-impl ExchangeClientConfig for BinanceClientConfig {
+#[async_trait::async_trait]
+impl ExchangeClient2 for BinanceClient {
     fn get_name() -> &'static str {
         "binance"
     }
@@ -75,11 +83,72 @@ impl ExchangeClientConfig for BinanceClientConfig {
     fn get_address() -> &'static str {
         BINANCE_ADDR
     }
-    fn get_subscription_message(pair: TradingPair) -> String {
-        BinanceSubMessage::subscribe_to_pair(pair).to_string()
+
+    async fn subscribe(&mut self) -> OrderbookResult<()> {
+        let pair = TradingPair::default();
+        let message_text = BinanceSubMessage::subscribe_to_pair(pair).to_string();
+        let msg: Message = Message::text(message_text);
+        self.binance_write_channel
+            .send(msg.clone())
+            .await
+            .map_err(|_| {
+                GeneralError::connection_error("Failed to send subscribe message".to_string())
+            })?;
+        info!("Subscribe sent");
+        let response = self.binance_read_channel.next().await;
+        match response {
+            Some(Ok(m)) => {
+                info!(
+                    "Subscribe response received: {}",
+                    m.into_text()
+                        .unwrap_or("Error parsing exchange's response".to_string())
+                );
+            }
+            _ => {
+                error!("Failed to receive response to subscription");
+            }
+        }
+        Ok(())
     }
 
-    fn message_handler(message: Message) -> OrderbookResult<OrderbookUpdate> {
+    async fn run(self) {
+        self.binance_read_channel
+            .for_each(|message| async {
+                match message {
+                    Ok(m) => {
+                        if let Ok(update_converted) = Self::handle_message(m) {
+                            self.grpc_sink.send(update_converted).await.ok();
+                        }
+                    }
+                    Err(_) => error!("Failed to parse a message from exchange. Skipping response"),
+                }
+            })
+            .await;
+    }
+
+    async fn init2(grpc_sink: Sender<OrderbookUpdate>) -> Self {
+        Self::init(grpc_sink).await
+    }
+}
+
+impl BinanceClient {
+    pub(crate) async fn init(grpc_sink: Sender<OrderbookUpdate>) -> Self {
+        let address = Self::get_address();
+        let url = url::Url::parse(&address).expect(&format!("Failed to parse URL: {}", address));
+
+        let (ws_stream, _) = tokio_tungstenite::connect_async(url)
+            .await
+            .expect("Failed to connect");
+        info!("Connection successful");
+
+        let (binance_write_channel, binance_read_channel) = ws_stream.split();
+        Self {
+            binance_read_channel,
+            binance_write_channel,
+            grpc_sink,
+        }
+    }
+    fn handle_message(message: Message) -> OrderbookResult<OrderbookUpdate> {
         let data = message.into_data();
         serde_json::from_slice::<BinanceOrderbookResponse>(&data)
             .map(|response| OrderbookUpdate {
