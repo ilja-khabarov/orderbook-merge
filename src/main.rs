@@ -27,7 +27,7 @@ async fn main() {
     let (sender, receiver) = tokio::sync::watch::channel(Summary::default());
 
     let server_handle = tokio::spawn(async move {
-        Server::run_server(sender, trading_pair).await;
+        Server::new(sender).run(trading_pair).await;
     });
     let grpc_handle = tokio::spawn(async move {
         run_grpc(receiver).await.unwrap();

@@ -5,8 +5,9 @@ use tokio_tungstenite::tungstenite::protocol::Message;
 use crate::{
     error::GeneralError,
     error::OrderbookResult,
-    exchange::exchange_client::{ExchangeClient, WsReadChannel, WsWriteChannel},
-    exchange::exchange_client::{OrderUpdate, OrderbookUpdate, TradingPair},
+    exchange::exchange_client::{
+        ExchangeClient, OrderUpdate, OrderbookUpdate, TradingPair, WsReadChannel, WsWriteChannel,
+    },
 };
 use futures_util::{SinkExt, StreamExt};
 use tokio::sync::mpsc::Sender;
