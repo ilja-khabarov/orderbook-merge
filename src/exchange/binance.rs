@@ -2,10 +2,12 @@ use serde::{Deserialize, Serialize};
 use std::fmt::{Display, Formatter};
 use tokio_tungstenite::tungstenite::protocol::Message;
 
-use crate::error::GeneralError;
-use crate::error::OrderbookResult;
-use crate::exchange::exchange_client::{ExchangeClient, WsReadChannel, WsWriteChannel};
-use crate::exchange::exchange_client::{OrderUpdate, OrderbookUpdate, TradingPair};
+use crate::{
+    error::GeneralError,
+    error::OrderbookResult,
+    exchange::exchange_client::{ExchangeClient, WsReadChannel, WsWriteChannel},
+    exchange::exchange_client::{OrderUpdate, OrderbookUpdate, TradingPair},
+};
 use futures_util::{SinkExt, StreamExt};
 use tokio::sync::mpsc::Sender;
 use tracing::{error, info};

@@ -1,4 +1,3 @@
-use crate::exchange::exchange_client::{WsReadChannel, WsWriteChannel};
 use futures_util::{SinkExt, StreamExt};
 use serde::{Deserialize, Serialize};
 use std::fmt::{Display, Formatter};
@@ -7,7 +6,9 @@ use tokio_tungstenite::tungstenite::protocol::Message;
 use tracing::{error, info};
 
 use crate::error::{GeneralError, OrderbookResult};
-use crate::exchange::exchange_client::{ExchangeClient, OrderUpdate, OrderbookUpdate, TradingPair};
+use crate::exchange::exchange_client::{
+    ExchangeClient, OrderUpdate, OrderbookUpdate, TradingPair, WsReadChannel, WsWriteChannel,
+};
 
 const BITSTAMP_ADDRESS: &str = "wss://ws.bitstamp.net";
 
