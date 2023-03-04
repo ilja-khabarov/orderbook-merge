@@ -3,7 +3,7 @@ use tokio::sync::{mpsc::Receiver, watch::Sender as MultiSender, Mutex};
 
 use crate::exchange::binance::BinanceClient;
 use crate::exchange::bitstamp::BitstampClient;
-use crate::exchange::exchange_client::ExchangeClient2;
+use crate::exchange::exchange_client::ExchangeClient;
 use crate::exchange::exchange_client::OrderbookUpdate;
 use crate::exchange::exchange_client::TradingPair;
 use crate::grpc::proto::Summary;
@@ -15,12 +15,12 @@ pub(crate) struct Server;
 impl Server {
     fn run_client<T>() -> Receiver<OrderbookUpdate>
     where
-        T: ExchangeClient2 + Send,
+        T: ExchangeClient + Send,
     {
         let (write, read) =
             tokio::sync::mpsc::channel::<OrderbookUpdate>(TOKIO_CHANNEL_BUFFER_SIZE);
         tokio::spawn(async move {
-            let mut client = T::init2(write).await;
+            let mut client = T::init(write).await;
             client.subscribe().await.expect("Failed to subscribe");
             client.run().await;
         });

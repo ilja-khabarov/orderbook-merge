@@ -50,10 +50,10 @@ pub(crate) trait ExchangeClientConfig {
 }
 
 #[async_trait::async_trait]
-pub(crate) trait ExchangeClient2 {
+pub(crate) trait ExchangeClient {
     fn get_name() -> &'static str;
     fn get_address() -> &'static str;
     async fn subscribe(&mut self) -> OrderbookResult<()>;
     async fn run(self);
-    async fn init2(grpc_sink: Sender<OrderbookUpdate>) -> Self;
+    async fn init(grpc_sink: Sender<OrderbookUpdate>) -> Self;
 }

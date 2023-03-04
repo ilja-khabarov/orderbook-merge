@@ -7,9 +7,7 @@ use tokio_tungstenite::tungstenite::protocol::Message;
 use tracing::{error, info};
 
 use crate::error::{GeneralError, OrderbookResult};
-use crate::exchange::exchange_client::{
-    ExchangeClient2, OrderUpdate, OrderbookUpdate, TradingPair,
-};
+use crate::exchange::exchange_client::{ExchangeClient, OrderUpdate, OrderbookUpdate, TradingPair};
 
 const BITSTAMP_ADDRESS: &str = "wss://ws.bitstamp.net";
 
@@ -95,7 +93,7 @@ pub(crate) struct BitstampClient {
 }
 
 #[async_trait::async_trait]
-impl ExchangeClient2 for BitstampClient {
+impl ExchangeClient for BitstampClient {
     fn get_name() -> &'static str {
         "bitstamp"
     }
@@ -145,7 +143,7 @@ impl ExchangeClient2 for BitstampClient {
             .await;
     }
 
-    async fn init2(grpc_sink: Sender<OrderbookUpdate>) -> Self {
+    async fn init(grpc_sink: Sender<OrderbookUpdate>) -> Self {
         Self::init(grpc_sink).await
     }
 }

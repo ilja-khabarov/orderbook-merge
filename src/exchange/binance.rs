@@ -4,7 +4,7 @@ use tokio_tungstenite::tungstenite::protocol::Message;
 
 use crate::error::GeneralError;
 use crate::error::OrderbookResult;
-use crate::exchange::exchange_client::{ExchangeClient2, WsReadChannel, WsWriteChannel};
+use crate::exchange::exchange_client::{ExchangeClient, WsReadChannel, WsWriteChannel};
 use crate::exchange::exchange_client::{OrderUpdate, OrderbookUpdate, TradingPair};
 use futures_util::{SinkExt, StreamExt};
 use tokio::sync::mpsc::Sender;
@@ -75,7 +75,7 @@ pub(crate) struct BinanceClient {
 }
 
 #[async_trait::async_trait]
-impl ExchangeClient2 for BinanceClient {
+impl ExchangeClient for BinanceClient {
     fn get_name() -> &'static str {
         "binance"
     }
@@ -126,7 +126,7 @@ impl ExchangeClient2 for BinanceClient {
             .await;
     }
 
-    async fn init2(grpc_sink: Sender<OrderbookUpdate>) -> Self {
+    async fn init(grpc_sink: Sender<OrderbookUpdate>) -> Self {
         Self::init(grpc_sink).await
     }
 }
