@@ -1,5 +1,13 @@
 # orderbook-merge
 
+Just a test task I performed once. It's not even my final form!
+
+The idea is:
+- have two orderbook streams from Binance and Bitstamp
+- get 10 best orders from them combined
+- stream it out through GRPC.
+
+
 ## Code structure:
 /client - trivial client, which subscribes to GRPC and prints everything to stdout
 
